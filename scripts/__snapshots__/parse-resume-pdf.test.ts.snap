@@ -1,0 +1,318 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`parseResumePdf(seed/resume.pdf) > matches the snapshot 1`] = `
+{
+  "header": {
+    "contacts": [
+      {
+        "id": "id-1",
+        "text": "larjun01@gmail.com",
+      },
+      {
+        "id": "id-2",
+        "text": "Chennai",
+      },
+      {
+        "id": "id-3",
+        "text": "+91 9941738680",
+      },
+      {
+        "id": "id-4",
+        "text": "linkedin.com/in/arjun-lakshmi-narasimhan-5626b01b8/",
+        "url": "https://www.linkedin.com/in/arjun-lakshmi-narasimhan-5626b01b8/",
+      },
+      {
+        "id": "id-5",
+        "text": "larjun.me",
+        "url": "https://larjun.me/",
+      },
+    ],
+    "name": "Arjun Lakshmi Narasimhan",
+  },
+  "sections": [
+    {
+      "heading": "Education",
+      "id": "id-6",
+      "schools": [
+        {
+          "degrees": [
+            {
+              "dates": {
+                "end": "May 2024",
+                "start": "August 2023",
+              },
+              "id": "id-8",
+              "name": "Master of Science (MS) in Computer Science",
+            },
+            {
+              "dates": {
+                "end": "May 2023",
+                "start": "August 2019",
+              },
+              "id": "id-9",
+              "name": "Bachelor of Science (BS) in Computer Science",
+            },
+          ],
+          "id": "id-7",
+          "location": "Boulder, CO",
+          "school": "University of Colorado Boulder",
+        },
+      ],
+      "type": "education",
+    },
+    {
+      "heading": "Summary",
+      "id": "id-10",
+      "text": "Software Engineer with 2+ years of experience building full-stack and distributed systems, including fraud prevention platforms at Amazon that delivered $4M+ in operational impact using Java, TypeScript, and AWS. Currently building data pipelines and production web apps for an online racing league with Next.js and PostgreSQL, from feature development to user support.",
+      "type": "summary",
+    },
+    {
+      "entries": [
+        {
+          "bullets": [
+            {
+              "id": "id-13",
+              "text": "Built a results pipeline (Next.js, TypeScript, Supabase/PostgreSQL) that parses race data from game servers, calculates championship points, and powers public leaderboards for 300+ active racers.",
+            },
+            {
+              "id": "id-14",
+              "text": "Combined leaderboards for two games into a single shared database schema, migrating data in stages with zero downtime.",
+            },
+            {
+              "id": "id-15",
+              "text": "Implemented fault-tolerant data collection across 7 game servers to prevent cascading failures, and resolved a scheduling bug that was silently dropping race results.",
+            },
+            {
+              "id": "id-16",
+              "text": "Improved site performance with server-side caching and pagination, and fixed database deadlocks under load.",
+            },
+            {
+              "id": "id-17",
+              "text": "Resolved user support tickets for drivers and league admins, debugging production issues and shipping fixes such as sign-in errors.",
+            },
+          ],
+          "dates": {
+            "end": "Present",
+            "start": "July 2026",
+          },
+          "id": "id-12",
+          "location": "Remote",
+          "org": "Sim Racing Alliance",
+          "title": "Software Developer (Volunteer)",
+        },
+        {
+          "bullets": [
+            {
+              "id": "id-19",
+              "text": "Built full-stack seller abuse prevention systems (React, TypeScript, Java, AWS Fargate) that automated quarantine and destruction of fraudulent inventory at scale.",
+            },
+            {
+              "id": "id-20",
+              "text": "Designed RESTful APIs and investigator-facing UIs that streamlined fraud review workflows, plus Seller Central widgets enabling secure account reinstatement via identity verification.",
+            },
+            {
+              "id": "id-21",
+              "text": "Built data pipelines and ETL workflows (SQL, AWS RDS, Redshift) to detect abusive seller behavior and trigger enforcement actions at scale.",
+            },
+            {
+              "id": "id-22",
+              "text": "Migrated legacy seller verification and fraud prevention systems to AWS serverless architecture, reducing operational costs by $180K annually.",
+            },
+            {
+              "id": "id-23",
+              "text": "Implemented event-driven abuse prevention services using SNS, SQS, and Lambda, contributing to over $4M in prevented fraud and operational savings.",
+            },
+          ],
+          "dates": {
+            "end": "February 2026",
+            "start": "December 2024",
+          },
+          "id": "id-18",
+          "location": "Tempe, Arizona",
+          "org": "Amazon Stores",
+          "title": "Software Development Engineer 1",
+        },
+        {
+          "bullets": [
+            {
+              "id": "id-25",
+              "text": "Built a food ordering and delivery app for a Chennai bakery startup, covering 150 sq. miles of delivery.",
+            },
+            {
+              "id": "id-26",
+              "text": "Developed REST APIs (Node.js, Express) and a mobile-first React PWA with OAuth2 authentication.",
+            },
+            {
+              "id": "id-27",
+              "text": "Increased the bakery’s sales by 300%.",
+            },
+          ],
+          "dates": {
+            "end": "June 2024",
+            "start": "December 2023",
+          },
+          "id": "id-24",
+          "location": "Remote",
+          "org": "Sri Vari Hot Chips",
+          "title": "App Developer (Volunteer)",
+        },
+        {
+          "bullets": [
+            {
+              "id": "id-29",
+              "text": "Led a 5-person team developing omnidirectional movement and PID control code for competition robots.",
+            },
+            {
+              "id": "id-30",
+              "text": "Finished runner-up in the standard format of RMNA 2022.",
+            },
+          ],
+          "dates": {
+            "end": "April 2023",
+            "start": "June 2022",
+          },
+          "id": "id-28",
+          "location": "Boulder, Colorado",
+          "org": "CU Robotics",
+          "title": "Lead Controls Engineer",
+        },
+      ],
+      "heading": "Experience",
+      "id": "id-11",
+      "type": "entries",
+    },
+    {
+      "entries": [
+        {
+          "bullets": [
+            {
+              "id": "id-33",
+              "text": "Developed a Swift app that offers real-time weather data and precise wildfire risk forecasts in the continental United States using Machine Learning.",
+            },
+            {
+              "id": "id-34",
+              "text": "Trained and adapted classification and regression models in TensorFlow, deploying to on-device using Core ML. Achieved 90% accuracy in multi-variable classification.",
+            },
+          ],
+          "dates": {
+            "end": "",
+            "start": "",
+          },
+          "id": "id-32",
+          "location": "",
+          "org": "",
+          "title": "Aether Predict - Wildfire Swift App",
+        },
+        {
+          "bullets": [
+            {
+              "id": "id-36",
+              "text": "Created a white-label web application for Expedia Group to improve communication between Vrbo property managers and customers.",
+            },
+            {
+              "id": "id-37",
+              "text": "Led frontend development using React, TypeScript, and Material UI, delivering responsive, customizable templates with PWA support following agile workflow.",
+            },
+            {
+              "id": "id-38",
+              "text": "Integrated backend using AWS API gateway with JSON Web Tokens for authentication and secure communication between frontend and backend.",
+            },
+            {
+              "id": "id-39",
+              "text": "Deployed the application on AWS using Docker, enabling automated CI/CD pipelines for continuous integration and deployment.",
+            },
+          ],
+          "dates": {
+            "end": "",
+            "start": "",
+          },
+          "id": "id-35",
+          "location": "",
+          "org": "",
+          "title": "Expedia Senior Capstone Project",
+        },
+      ],
+      "heading": "Projects",
+      "id": "id-31",
+      "type": "entries",
+    },
+    {
+      "heading": "Skills & Technologies",
+      "id": "id-40",
+      "rows": [
+        {
+          "category": "Programming Languages",
+          "id": "id-41",
+          "items": [
+            "Java",
+            "Python",
+            "C",
+            "C++",
+            "Swift",
+            "SQL",
+          ],
+        },
+        {
+          "category": "Frontend",
+          "id": "id-42",
+          "items": [
+            "React",
+            "TypeScript",
+            "JavaScript",
+            "Material UI",
+            "PWA",
+          ],
+        },
+        {
+          "category": "Backend & Systems",
+          "id": "id-43",
+          "items": [
+            "Distributed Systems",
+            "Microservices",
+            "REST APIs",
+            "Node.js",
+            "Express",
+          ],
+        },
+        {
+          "category": "Cloud & DevOps",
+          "id": "id-44",
+          "items": [
+            "AWS (Lambda",
+            "Fargate",
+            "SNS",
+            "SQS",
+            "RDS",
+            "Redshift",
+            "API Gateway)",
+            "Docker",
+            "CI/CD",
+          ],
+        },
+        {
+          "category": "Databases & Data",
+          "id": "id-45",
+          "items": [
+            "PostgreSQL",
+            "MySQL",
+            "MongoDB",
+            "Redis",
+            "ETL Pipelines",
+          ],
+        },
+        {
+          "category": "Machine Learning",
+          "id": "id-46",
+          "items": [
+            "TensorFlow",
+            "Core ML",
+            "Prompt Engineering",
+          ],
+        },
+      ],
+      "type": "skills",
+    },
+  ],
+  "version": 1,
+}
+`;
