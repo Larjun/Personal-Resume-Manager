@@ -1,66 +1,54 @@
 "use client";
 
-import { useLayoutEffect, useMemo, useState } from "react";
-import { BlockView, TemplateRoot } from "@/components/template/BlockView";
-import { PAGE_GEOMETRY } from "@/lib/page/sizes";
-import { toBlocks } from "@/lib/pagination/blocks";
-import type { PageSize, ResumeContent } from "@/lib/resume/schema";
+import { useLayoutEffect, useState } from "react";
+import { PageView } from "@/components/template/PageView";
+import type { Pagination } from "@/lib/pagination/usePagination";
 
 const GUTTER = 32;
 
-/**
- * Milestone 1b preview: one continuous sheet at the real page width, scaled
- * to fit. Milestone 1c replaces this with measured, paginated pages.
- */
-export function Preview({ content, pageSize }: { content: ResumeContent; pageSize: PageSize }) {
-  const geo = PAGE_GEOMETRY[pageSize];
-  const blocks = useMemo(() => toBlocks(content), [content]);
+/** Paginated preview: each computed page at true size, scaled to fit the panel. */
+export function Preview({ pagination }: { pagination: Pagination }) {
+  const { geo, pages } = pagination;
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
-  const [sheet, setSheet] = useState<HTMLDivElement | null>(null);
-  const containerWidth = useObservedSize(container)?.width;
-  const sheetHeight = useObservedSize(sheet)?.height ?? geo.height;
-  const scale = containerWidth === undefined ? 1 : Math.min(1, containerWidth / geo.width);
+  const width = useObservedWidth(container);
+  const scale = width === null ? 1 : Math.min(1, width / geo.width);
 
   return (
     <div ref={setContainer} style={{ padding: GUTTER }}>
-      <div style={{ height: sheetHeight * scale, width: geo.width * scale, margin: "0 auto" }}>
-        <div
-          ref={setSheet}
-          className="bg-white shadow-md"
-          style={{
-            width: geo.width,
-            minHeight: geo.height,
-            padding: `${geo.margin.top}px ${geo.margin.right}px ${geo.margin.bottom}px ${geo.margin.left}px`,
-            transform: `scale(${scale})`,
-            transformOrigin: "top left",
-          }}
-        >
-          <TemplateRoot>
-            {blocks.map((block) => (
-              <BlockView key={block.key} block={block} />
-            ))}
-          </TemplateRoot>
+      {pagination.measureLayer}
+      {pages === null ? (
+        <p className="py-12 text-center text-sm text-zinc-500">Laying out pages…</p>
+      ) : (
+        <div className="flex flex-col items-center gap-6">
+          {pages.map((page, i) => (
+            <figure key={i} aria-label={`Page ${i + 1} of ${pages.length}`}>
+              <div className="shadow-md" style={{ width: geo.width * scale, height: geo.height * scale }}>
+                <div style={{ transform: `scale(${scale})`, transformOrigin: "top left" }}>
+                  <PageView blocks={page.blocks} geo={geo} />
+                </div>
+              </div>
+              <figcaption className="mt-2 text-center text-xs text-zinc-500">
+                Page {i + 1} of {pages.length}
+                {page.overflows && (
+                  <span className="ml-2 font-medium text-red-600">⚠ A block is taller than the page and gets cut off</span>
+                )}
+              </figcaption>
+            </figure>
+          ))}
         </div>
-      </div>
+      )}
     </div>
   );
 }
 
-/** Content-box size of an element (layout size, unaffected by transforms). */
-function useObservedSize(el: HTMLElement | null) {
-  const [size, setSize] = useState<{ width: number; height: number } | null>(null);
+/** Content-box width of an element (layout size, unaffected by transforms). */
+function useObservedWidth(el: HTMLElement | null) {
+  const [width, setWidth] = useState<number | null>(null);
   useLayoutEffect(() => {
     if (!el) return;
-    const ro = new ResizeObserver(([entry]) => {
-      const box = entry.borderBoxSize?.[0];
-      // Border-box for the sheet (includes padding); content-box for containers.
-      setSize({
-        width: entry.contentRect.width,
-        height: box ? box.blockSize : el.offsetHeight,
-      });
-    });
+    const ro = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
     ro.observe(el);
     return () => ro.disconnect();
   }, [el]);
-  return size;
+  return width;
 }

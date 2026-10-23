@@ -6,6 +6,7 @@ import { useCallback, useRef, useState } from "react";
 import { newSection } from "@/lib/resume/factories";
 import { DATE_FORMAT_LABEL, DATE_FORMATS, type DateFormat } from "@/lib/resume/dates";
 import { PAGE_SIZES, type Section, type SectionType } from "@/lib/resume/schema";
+import { usePagination } from "@/lib/pagination/usePagination";
 import { DateFormatContext } from "./dateFields";
 import { HeaderForm, SectionCard, type Update } from "./forms";
 import { moveItem, SortableList } from "./SortableList";
@@ -29,6 +30,8 @@ export function Editor({ id, initial }: { id: string; initial: EditorDoc }) {
   );
 
   const sections = doc.content.sections;
+  const pagination = usePagination(doc.content, doc.pageSize);
+  const pageCount = pagination.pages?.length;
 
   return (
     <div className="flex h-dvh flex-col">
@@ -47,6 +50,11 @@ export function Editor({ id, initial }: { id: string; initial: EditorDoc }) {
           className="min-w-0 flex-1 rounded px-2 py-1 text-sm font-semibold outline-none hover:bg-zinc-50 focus:bg-zinc-50 focus:ring-1 focus:ring-zinc-300"
         />
         <SaveIndicator status={status} onRetry={flush} />
+        {pageCount !== undefined && (
+          <span className={`text-xs font-medium ${pageCount > 1 ? "text-amber-700" : "text-zinc-500"}`}>
+            {pageCount} {pageCount === 1 ? "page" : "pages"}
+          </span>
+        )}
         <label className="flex items-center gap-1.5 text-xs text-zinc-500">
           Dates
           <select
@@ -113,7 +121,7 @@ export function Editor({ id, initial }: { id: string; initial: EditorDoc }) {
         </section>
 
         <section aria-label="Preview" className="min-w-0 flex-1 overflow-y-auto bg-zinc-200/70">
-          <Preview content={doc.content} pageSize={doc.pageSize} />
+          <Preview pagination={pagination} />
         </section>
       </div>
     </div>
