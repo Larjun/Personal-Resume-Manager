@@ -34,28 +34,34 @@ export function useAutosave(id: string, initial: EditorDoc) {
   const latest = useRef(initial);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const inFlight = useRef(0);
+  // Settles after the most recent save; saves are sequential, so also after all earlier ones.
+  const lastSave = useRef<Promise<boolean>>(Promise.resolve(true));
 
-  const flush = useCallback(() => {
+  /** Saves pending changes now. Resolves true once everything is saved. */
+  const flush = useCallback((): Promise<boolean> => {
     clearTimeout(timer.current);
     timer.current = undefined;
     const doc = latest.current;
     const base = saved.current;
     const patch = diff(doc, base);
-    if (isEmpty(patch)) return;
+    if (isEmpty(patch)) return lastSave.current;
 
     inFlight.current++;
     setStatus("saving");
-    saveResume(id, patch)
+    lastSave.current = saveResume(id, patch)
       .then(() => {
         // Record what was saved; later edits stay pending against it.
         saved.current = { ...doc, title: patch.title ?? base.title };
         if (--inFlight.current === 0) setStatus(isEmpty(diff(latest.current, saved.current)) ? "saved" : "unsaved");
+        return true;
       })
       .catch((err) => {
         inFlight.current--;
         console.error("Autosave failed", err);
         setStatus("error");
+        return false;
       });
+    return lastSave.current;
   }, [id]);
 
   const schedule = useCallback(

@@ -2,6 +2,7 @@
 
 import { produce } from "immer";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import { newSection } from "@/lib/resume/factories";
 import { DATE_FORMAT_LABEL, DATE_FORMATS, type DateFormat } from "@/lib/resume/dates";
@@ -14,6 +15,7 @@ import { useAutosave, type EditorDoc, type SaveStatus } from "./useAutosave";
 import { Preview } from "./Preview";
 
 export function Editor({ id, initial }: { id: string; initial: EditorDoc }) {
+  const router = useRouter();
   const [doc, setDoc] = useState(initial);
   const docRef = useRef(initial);
   const { status, schedule, flush } = useAutosave(id, initial);
@@ -36,7 +38,7 @@ export function Editor({ id, initial }: { id: string; initial: EditorDoc }) {
   return (
     <div className="flex h-dvh flex-col">
       <header className="flex shrink-0 items-center gap-3 border-b border-zinc-200 bg-white px-4 py-2">
-        <Link href="/" onClick={flush} className="text-sm text-zinc-500 hover:text-zinc-900">
+        <Link href="/" onClick={() => void flush()} className="text-sm text-zinc-500 hover:text-zinc-900">
           ← Resumes
         </Link>
         <input
@@ -49,7 +51,7 @@ export function Editor({ id, initial }: { id: string; initial: EditorDoc }) {
           }}
           className="min-w-0 flex-1 rounded px-2 py-1 text-sm font-semibold outline-none hover:bg-zinc-50 focus:bg-zinc-50 focus:ring-1 focus:ring-zinc-300"
         />
-        <SaveIndicator status={status} onRetry={flush} />
+        <SaveIndicator status={status} onRetry={() => void flush()} />
         {pageCount !== undefined && (
           <span className={`text-xs font-medium ${pageCount > 1 ? "text-amber-700" : "text-zinc-500"}`}>
             {pageCount} {pageCount === 1 ? "page" : "pages"}
@@ -89,9 +91,22 @@ export function Editor({ id, initial }: { id: string; initial: EditorDoc }) {
           ))}
         </div>
         <button
-          disabled
-          title="Export arrives in milestone 1d"
-          className="rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40"
+          onClick={async () => {
+            // Open the tab synchronously (popup blockers), then point it at the
+            // print view once every pending edit is saved, so it never prints stale content.
+            const tab = window.open("", "_blank");
+            const ok = await flush();
+            if (!ok) {
+              tab?.close();
+              alert("Couldn't save your latest changes, so the PDF would be out of date. Please try again.");
+              return;
+            }
+            const url = `/resumes/${id}/print?autoprint=1`;
+            if (tab) tab.location.href = url;
+            else router.push(url);
+          }}
+          title="Opens the print view; choose “Save as PDF” in the dialog"
+          className="rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-700"
         >
           Print / PDF
         </button>

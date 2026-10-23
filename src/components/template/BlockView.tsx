@@ -82,8 +82,9 @@ export function BlockView({ block }: { block: Block }) {
     case "bullet":
       return (
         <div className={s.bullet}>
+          {/* Drawn, not a font glyph: no system-font fallback in the PDF. */}
           <span className={s.bulletGlyph} aria-hidden>
-            ●
+            <span className={s.bulletDot} />
           </span>
           <span className={s.bulletText}>{block.bullet.text}</span>
         </div>
@@ -109,7 +110,7 @@ export function BlockView({ block }: { block: Block }) {
       return (
         <div className={`${s.degree} ${s.row}`}>
           <div className={`${s.rowLeft} ${s.degreeName}`}>
-            <span aria-hidden>➔</span>
+            <ArrowIcon />
             <span>{name}</span>
           </div>
           <div className={`${s.rowRight} ${s.degreeDates}`}>{block.dateText}</div>
@@ -127,6 +128,15 @@ export function BlockView({ block }: { block: Block }) {
       );
     }
   }
+}
+
+/** "➔" drawn as SVG so the PDF doesn't depend on a system symbol font. */
+function ArrowIcon() {
+  return (
+    <svg className={s.arrow} viewBox="0 0 12 10" aria-hidden>
+      <path d="M0 3.6h6.5V0.6L12 5l-5.5 4.4V6.4H0z" fill="currentColor" />
+    </svg>
+  );
 }
 
 /** Root wrapper that applies base template typography. */

@@ -41,7 +41,9 @@ export function usePagination(
   const mounted = useIsClient();
 
   useLayoutEffect(() => {
-    if (!layer) return;
+    // The layer is display:none while printing (print CSS); measuring then
+    // would read 0px for every block. Keep the last good layout instead.
+    if (!layer || layer.getClientRects().length === 0) return;
     const byKey = new Map(blocks.map((b) => [b.key, b]));
     const measured = [...layer.children].map((el, i) => ({
       key: blocks[i].key,
@@ -59,6 +61,7 @@ export function usePagination(
     createPortal(
       <div
         aria-hidden
+        data-measure-layer
         style={{
           position: "absolute",
           top: 0,
