@@ -30,11 +30,13 @@ describe("parseLines", () => {
       counter(),
     );
 
-    expect(content.header.contacts).toEqual([
-      { id: "id-1", text: "jane@x.com" },
-      { id: "id-2", text: "Denver" },
-      { id: "id-3", text: "jane.dev", url: "https://jane.dev/" },
-    ]);
+    expect(content.header).toEqual({
+      name: "Jane Doe",
+      email: "jane@x.com",
+      location: "Denver",
+      phone: "",
+      links: [{ id: "id-3", text: "jane.dev", url: "https://jane.dev/" }],
+    });
     const [exp, edu, skills] = content.sections;
     expect(exp).toMatchObject({
       type: "entries",
@@ -44,19 +46,44 @@ describe("parseLines", () => {
           title: "Engineer",
           org: "Acme",
           location: "Remote",
-          dates: { start: "Jan 2020", end: "Present" },
+          dates: { start: { year: 2020, month: 1 }, end: "present" },
           bullets: [{ text: "Did a thing that wrapped onto a second line." }, { text: "Second" }],
         },
       ],
     });
     expect(edu).toMatchObject({
       type: "education",
-      schools: [{ school: "State U", location: "Boulder, CO", degrees: [{ name: "BS in CS", dates: { start: "Aug 2015", end: "May 2019" } }] }],
+      schools: [{ school: "State U", location: "Boulder, CO", degrees: [{ name: "BS in CS", dates: { start: { year: 2015, month: 8 }, end: { year: 2019, month: 5 } } }] }],
     });
     expect(skills).toMatchObject({
       type: "skills",
       heading: "Skills & Technologies",
       rows: [{ category: "Languages", items: ["Go", "Rust"] }],
+    });
+  });
+});
+
+describe("parseLines: publications", () => {
+  it("reads title | venue, date, authors and bullets", () => {
+    const content = parseLines(
+      [
+        line("Jane Doe", "", 220),
+        line("jane@x.com", "", 70),
+        line("PUBLICATIONS"),
+        line("Fast Things | NeurIPS 2025", "Dec 2025"),
+        line("J. Doe, A. Smith"),
+        line("● Spotlight talk", "", 46.8),
+        line("Slow Things", "2024"),
+      ],
+      counter(),
+    );
+    expect(content.sections[0]).toMatchObject({
+      type: "publications",
+      heading: "Publications",
+      papers: [
+        { title: "Fast Things", venue: "NeurIPS 2025", date: { year: 2025, month: 12 }, authors: "J. Doe, A. Smith", bullets: [{ text: "Spotlight talk" }] },
+        { title: "Slow Things", venue: "", date: { year: 2024, month: null }, authors: "", bullets: [] },
+      ],
     });
   });
 });

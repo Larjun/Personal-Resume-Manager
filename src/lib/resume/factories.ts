@@ -1,22 +1,20 @@
 import type {
   Bullet,
-  Contact,
   Degree,
   Entry,
+  Link,
+  Paper,
   ResumeContent,
   School,
   Section,
   SectionType,
   SkillRow,
 } from "./schema";
+import { CONTENT_VERSION } from "./schema";
 
 export const newId = () => crypto.randomUUID();
 
-export const newContact = (text = "", url?: string): Contact => ({
-  id: newId(),
-  text,
-  ...(url ? { url } : {}),
-});
+export const newLink = (text = "", url = ""): Link => ({ id: newId(), text, url });
 
 export const newBullet = (text = ""): Bullet => ({ id: newId(), text });
 
@@ -25,14 +23,25 @@ export const newEntry = (): Entry => ({
   title: "",
   org: "",
   location: "",
-  dates: { start: "", end: "" },
+  dates: { start: null, end: null },
   bullets: [newBullet()],
+  visible: true,
+});
+
+export const newPaper = (): Paper => ({
+  id: newId(),
+  title: "",
+  authors: "",
+  venue: "",
+  date: null,
+  bullets: [],
+  visible: true,
 });
 
 export const newDegree = (): Degree => ({
   id: newId(),
   name: "",
-  dates: { start: "", end: "" },
+  dates: { start: null, end: null },
 });
 
 export const newSchool = (): School => ({
@@ -51,6 +60,7 @@ export const newSkillRow = (category = "", items: string[] = []): SkillRow => ({
 export const DEFAULT_HEADINGS: Record<SectionType, string> = {
   summary: "Summary",
   entries: "Experience",
+  publications: "Publications",
   education: "Education",
   skills: "Skills",
 };
@@ -62,6 +72,8 @@ export function newSection(type: SectionType, heading = DEFAULT_HEADINGS[type]):
       return { ...base, type, text: "" };
     case "entries":
       return { ...base, type, entries: [newEntry()] };
+    case "publications":
+      return { ...base, type, papers: [newPaper()] };
     case "education":
       return { ...base, type, schools: [newSchool()] };
     case "skills":
@@ -71,8 +83,9 @@ export function newSection(type: SectionType, heading = DEFAULT_HEADINGS[type]):
 
 export function emptyResume(): ResumeContent {
   return {
-    version: 1,
-    header: { name: "Your Name", contacts: [newContact("email@example.com")] },
+    version: CONTENT_VERSION,
+    settings: { dateFormat: "long" },
+    header: { name: "Your Name", email: "you@example.com", location: "", phone: "", links: [] },
     sections: [
       newSection("summary"),
       newSection("entries", "Experience"),

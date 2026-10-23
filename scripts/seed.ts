@@ -30,7 +30,8 @@ async function main() {
 
   const counts = content.sections.map((s) => s.heading).join(", ");
   console.log(`Seeded "${title}" (${SEED_ID}) from ${path.relative(process.cwd(), file)}`);
-  console.log(`  ${content.header.contacts.length} contacts; sections: ${counts}`);
+  const { email, phone, location, links } = content.header;
+  console.log(`  contact: ${[email, phone, location].filter(Boolean).join(" · ")} + ${links.length} links; sections: ${counts}`);
   await sql.end();
 }
 

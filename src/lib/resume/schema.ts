@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { DATE_FORMATS } from "./dates";
+import { migrateContent } from "./migrate";
 
 export const PAGE_SIZES = ["Letter", "A4"] as const;
 export const PageSizeSchema = z.enum(PAGE_SIZES);
@@ -6,20 +8,38 @@ export type PageSize = z.infer<typeof PageSizeSchema>;
 
 const Id = z.string().min(1);
 
-export const DateRangeSchema = z.object({
-  start: z.string(),
-  end: z.string(),
+/** Month is optional (year-only dates); 1 = January. */
+export const YearMonthSchema = z.object({
+  year: z.number().int().min(1900).max(2100),
+  month: z.number().int().min(1).max(12).nullable(),
 });
 
-export const ContactSchema = z.object({
+export const DateRangeSchema = z.object({
+  start: YearMonthSchema.nullable(),
+  end: z.union([YearMonthSchema, z.literal("present")]).nullable(),
+});
+
+export const DateFormatSchema = z.enum(DATE_FORMATS);
+
+export const SettingsSchema = z.object({
+  /** One format for every date on the resume. */
+  dateFormat: DateFormatSchema,
+});
+
+export const LinkSchema = z.object({
   id: Id,
+  /** Shown on the resume; falls back to the URL without its protocol. */
   text: z.string(),
-  url: z.string().optional(),
+  url: z.string(),
 });
 
 export const HeaderSchema = z.object({
   name: z.string(),
-  contacts: z.array(ContactSchema),
+  // Plain text, rendered in this order on the contact line, then the links.
+  email: z.string(),
+  location: z.string(),
+  phone: z.string(),
+  links: z.array(LinkSchema),
 });
 
 export const BulletSchema = z.object({
@@ -34,6 +54,21 @@ export const EntrySchema = z.object({
   location: z.string(),
   dates: DateRangeSchema,
   bullets: z.array(BulletSchema),
+  /** Unchecked entries stay in the editor but are left out of the resume. */
+  visible: z.boolean().default(true),
+});
+
+export const PaperSchema = z.object({
+  id: Id,
+  title: z.string(),
+  authors: z.string(),
+  /** Journal, conference or preprint server. */
+  venue: z.string(),
+  date: YearMonthSchema.nullable(),
+  /** DOI, arXiv or publisher link; the title links to it. */
+  url: z.string().optional(),
+  bullets: z.array(BulletSchema),
+  visible: z.boolean().default(true),
 });
 
 export const DegreeSchema = z.object({
@@ -69,6 +104,12 @@ export const EntriesSectionSchema = z.object({
   entries: z.array(EntrySchema),
 });
 
+export const PublicationsSectionSchema = z.object({
+  ...sectionBase,
+  type: z.literal("publications"),
+  papers: z.array(PaperSchema),
+});
+
 export const EducationSectionSchema = z.object({
   ...sectionBase,
   type: z.literal("education"),
@@ -84,27 +125,37 @@ export const SkillsSectionSchema = z.object({
 export const SectionSchema = z.discriminatedUnion("type", [
   SummarySectionSchema,
   EntriesSectionSchema,
+  PublicationsSectionSchema,
   EducationSectionSchema,
   SkillsSectionSchema,
 ]);
 
-export const ResumeContentSchema = z.object({
-  version: z.literal(1),
+export const CONTENT_VERSION = 3;
+
+const CurrentContentSchema = z.object({
+  version: z.literal(CONTENT_VERSION),
+  settings: SettingsSchema,
   header: HeaderSchema,
   sections: z.array(SectionSchema),
 });
 
+/** Accepts any stored version and returns current-version content. */
+export const ResumeContentSchema = z.preprocess(migrateContent, CurrentContentSchema);
+
+export type YearMonth = z.infer<typeof YearMonthSchema>;
 export type DateRange = z.infer<typeof DateRangeSchema>;
-export type Contact = z.infer<typeof ContactSchema>;
+export type Settings = z.infer<typeof SettingsSchema>;
+export type Link = z.infer<typeof LinkSchema>;
 export type Header = z.infer<typeof HeaderSchema>;
 export type Bullet = z.infer<typeof BulletSchema>;
 export type Entry = z.infer<typeof EntrySchema>;
+export type Paper = z.infer<typeof PaperSchema>;
 export type Degree = z.infer<typeof DegreeSchema>;
 export type School = z.infer<typeof SchoolSchema>;
 export type SkillRow = z.infer<typeof SkillRowSchema>;
 export type Section = z.infer<typeof SectionSchema>;
 export type SectionType = Section["type"];
-export type ResumeContent = z.infer<typeof ResumeContentSchema>;
+export type ResumeContent = z.infer<typeof CurrentContentSchema>;
 
 export const ResumeIdSchema = z.uuid();
 

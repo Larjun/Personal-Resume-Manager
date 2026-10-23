@@ -1,0 +1,180 @@
+/*
+ * Resume template, modeled on seed/resume.pdf.
+ * Rules: fixed pt sizes and line-heights; spacing via padding only (never
+ * margin) so measured block heights add up exactly when paginating.
+ */
+
+.root {
+  font-family: var(--font-resume-sans);
+  font-size: 9pt;
+  line-height: 11.9pt;
+  color: #000;
+  font-kerning: normal;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+}
+
+.root * {
+  margin: 0;
+}
+
+.serif {
+  font-family: var(--font-resume-serif);
+}
+
+/* Header */
+.name {
+  font-family: var(--font-resume-serif);
+  font-weight: 700;
+  font-size: 13pt;
+  line-height: 20pt;
+  text-align: center;
+}
+
+.contacts {
+  font-family: var(--font-resume-serif);
+  font-size: 9pt;
+  line-height: 13pt;
+  padding-top: 2pt;
+  text-align: center;
+}
+
+.contactSep {
+  padding: 0 0.3em;
+}
+
+.link {
+  color: #1155cc;
+  text-decoration: underline;
+}
+
+/* Section heading: small-caps serif with a rule underneath */
+.heading {
+  padding-top: 6.5pt;
+  padding-bottom: 1.5pt;
+}
+
+.headingText {
+  font-family: var(--font-resume-serif);
+  font-weight: 700;
+  font-size: 11pt;
+  line-height: 13pt;
+  font-variant: small-caps;
+  letter-spacing: 0.02em;
+  padding-bottom: 2pt;
+  border-bottom: 1px solid #000;
+}
+
+/* Row with left and right parts (entry headers, degrees) */
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12pt;
+}
+
+.rowLeft {
+  min-width: 0;
+}
+
+.rowRight {
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.bar {
+  font-weight: 400;
+}
+
+/* Experience / project entries */
+.entryHeader {
+  font-family: var(--font-resume-serif);
+  font-weight: 700;
+  font-size: 9pt;
+  line-height: 12pt;
+  padding-top: 4pt;
+  padding-bottom: 3pt;
+}
+
+.bullet {
+  display: grid;
+  grid-template-columns: 18pt 18pt 1fr;
+}
+
+.bulletGlyph {
+  grid-column: 2;
+  font-size: 9pt;
+}
+
+.bulletText {
+  grid-column: 3;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+/* Publications: title row (serif, like entry headers) + citation line */
+.paper {
+  padding-top: 4pt;
+  padding-bottom: 3pt;
+}
+
+.paperTitle {
+  font-family: var(--font-resume-serif);
+  font-weight: 700;
+  font-size: 9pt;
+  line-height: 12pt;
+}
+
+.paperTitle a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.citation {
+  overflow-wrap: anywhere;
+}
+
+.venue {
+  font-style: italic;
+}
+
+/* Summary */
+.summary {
+  padding-top: 4pt;
+  white-space: pre-wrap;
+}
+
+/* Education */
+.school {
+  font-weight: 700;
+  font-size: 10pt;
+  line-height: 14pt;
+}
+
+.schoolLocation {
+  font-size: 9pt;
+}
+
+.degree {
+  font-weight: 700;
+  line-height: 15pt;
+}
+
+.degreeName {
+  display: grid;
+  grid-template-columns: 18pt 1fr;
+  padding-left: 3pt;
+}
+
+.degreeDates {
+  font-size: 10pt;
+}
+
+/* Skills */
+.skillRow {
+  font-weight: 700;
+}
+
+.placeholder {
+  color: #a1a1aa;
+}

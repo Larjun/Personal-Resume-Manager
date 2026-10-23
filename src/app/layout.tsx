@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import "@fontsource/spectral/400.css";
 import "@fontsource/spectral/700.css";
 import "@fontsource/arimo/400.css";
+import "@fontsource/arimo/400-italic.css";
 import "@fontsource/arimo/700.css";
 import "./globals.css";
 

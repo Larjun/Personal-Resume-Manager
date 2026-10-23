@@ -18,8 +18,13 @@ describe("factories", () => {
   });
 
   it("newSection() produces valid sections of each type", () => {
-    for (const type of ["summary", "entries", "education", "skills"] as const) {
-      const content: ResumeContent = { version: 1, header: { name: "", contacts: [] }, sections: [newSection(type)] };
+    for (const type of ["summary", "entries", "publications", "education", "skills"] as const) {
+      const content: ResumeContent = {
+        version: 3,
+        settings: { dateFormat: "long" },
+        header: { name: "", email: "", location: "", phone: "", links: [] },
+        sections: [newSection(type)],
+      };
       expect(ResumeContentSchema.parse(content).sections[0].type).toBe(type);
     }
   });

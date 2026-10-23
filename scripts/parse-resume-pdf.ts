@@ -11,7 +11,10 @@
  */
 import { createRequire } from "node:module";
 import { newId as defaultNewId } from "@/lib/resume/factories";
+import { parseDateRange, parseYearMonth } from "@/lib/resume/dates";
+import { classifyContacts } from "@/lib/resume/migrate";
 import {
+  CONTENT_VERSION,
   ResumeContentSchema,
   type DateRange,
   type ResumeContent,
@@ -97,7 +100,7 @@ const titleCase = (s: string) =>
 
 function splitDates(s: string): DateRange {
   const [start = "", end = ""] = s.split(/\s+[-–—]\s+/);
-  return { start: start.trim(), end: end.trim() };
+  return parseDateRange(start, end);
 }
 
 /** "A | B" → ["A", "B"]; no separator → [s, ""]. Splits on the first (or last) bar. */
@@ -112,6 +115,7 @@ function sectionTypeFor(heading: string): Section["type"] {
   if (h.includes("education")) return "education";
   if (h.includes("summary") || h.includes("profile") || h.includes("objective")) return "summary";
   if (h.includes("skill")) return "skills";
+  if (h.includes("publication") || h.includes("papers")) return "publications";
   return "entries";
 }
 
@@ -145,7 +149,9 @@ export function parseLines(lines: PdfLine[], newId: () => string = defaultNewId)
             ? { ...base, type, schools: [] }
             : type === "skills"
               ? { ...base, type, rows: [] }
-              : { ...base, type, entries: [] };
+              : type === "publications"
+                ? { ...base, type, papers: [] }
+                : { ...base, type, entries: [] };
       sections.push(section);
       appendTarget = null;
       continue;
@@ -184,6 +190,35 @@ export function parseLines(lines: PdfLine[], newId: () => string = defaultNewId)
         break;
       }
 
+      case "publications": {
+        // "Title | Venue" on the left, date on the right; an indented line
+        // without a bullet glyph right after the title row is the author list.
+        const paper = section.papers.at(-1);
+        if (line.left.startsWith("●")) {
+          if (!paper) break;
+          const bullet = { id: newId(), text: line.left.replace(/^●\s*/, "") };
+          paper.bullets.push(bullet);
+          appendTarget = bullet;
+        } else if (line.x > 40 && appendTarget) {
+          appendTarget.text = `${appendTarget.text} ${line.left}`;
+        } else if (paper && !line.right && !paper.authors && paper.bullets.length === 0) {
+          paper.authors = line.left;
+        } else {
+          const [title, venue] = splitBar(line.left, "first");
+          section.papers.push({
+            id: newId(),
+            title,
+            authors: "",
+            venue,
+            date: parseYearMonth(line.right),
+            bullets: [],
+            visible: true,
+          });
+          appendTarget = null;
+        }
+        break;
+      }
+
       case "entries": {
         const entry = section.entries.at(-1);
         if (line.left.startsWith("●")) {
@@ -206,6 +241,7 @@ export function parseLines(lines: PdfLine[], newId: () => string = defaultNewId)
             location,
             dates: splitDates(dates),
             bullets: [],
+            visible: true,
           });
           appendTarget = null;
         }
@@ -215,8 +251,9 @@ export function parseLines(lines: PdfLine[], newId: () => string = defaultNewId)
   }
 
   return ResumeContentSchema.parse({
-    version: 1,
-    header: { name: nameLine.left, contacts },
+    version: CONTENT_VERSION,
+    settings: { dateFormat: "long" },
+    header: { name: nameLine.left, ...classifyContacts(contacts) },
     sections,
   });
 }
