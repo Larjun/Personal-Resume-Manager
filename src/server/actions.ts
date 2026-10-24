@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
+import { syncResumeLinks } from "@/db/resume-links";
 import { resumes } from "@/db/schema";
 import { cloneWithNewIds, emptyResume, newId } from "@/lib/resume/factories";
 import { PageSizeSchema, ResumeContentSchema, ResumeIdSchema, ResumeTitleSchema } from "@/lib/resume/schema";
@@ -50,14 +51,19 @@ export async function duplicateResume(id: string): Promise<string | null> {
   if (!source) return null;
   const now = new Date();
   const copyId = newId();
-  await db.insert(resumes).values({
-    id: copyId,
-    userId: user.id,
-    title: `${source.title} (copy)`.slice(0, 200),
-    pageSize: source.pageSize,
-    content: cloneWithNewIds(source.content),
-    createdAt: now,
-    updatedAt: now,
+  // The copy keeps its library source ids, so it gets the same links.
+  const content = cloneWithNewIds(source.content);
+  await db.transaction(async (tx) => {
+    await tx.insert(resumes).values({
+      id: copyId,
+      userId: user.id,
+      title: `${source.title} (copy)`.slice(0, 200),
+      pageSize: source.pageSize,
+      content,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await syncResumeLinks(tx, user.id, copyId, content);
   });
   revalidatePath("/");
   return copyId;
@@ -75,7 +81,10 @@ const SavePatchSchema = z.object({
   content: ResumeContentSchema.optional(),
 });
 
-/** Editor autosave. Does not revalidate: the editor owns its state client-side. */
+/**
+ * Editor autosave. Saving content also rewrites the resume's library links in
+ * the same transaction. Does not revalidate: the editor owns its state client-side.
+ */
 export async function saveResume(
   id: string,
   patch: z.input<typeof SavePatchSchema>,
@@ -83,12 +92,15 @@ export async function saveResume(
   const user = await requireUser();
   const data = SavePatchSchema.parse(patch);
   const updatedAt = new Date();
-  const saved = await db
-    .update(resumes)
-    .set({ ...data, updatedAt })
-    .where(ownResume(id, user.id))
-    .returning({ id: resumes.id });
-  // Not found or not ours: fail loudly so the editor shows a save error instead of "Saved".
-  if (saved.length === 0) throw new Error("Resume not found.");
+  await db.transaction(async (tx) => {
+    const saved = await tx
+      .update(resumes)
+      .set({ ...data, updatedAt })
+      .where(ownResume(id, user.id))
+      .returning({ id: resumes.id });
+    // Not found or not ours: fail loudly so the editor shows a save error instead of "Saved".
+    if (saved.length === 0) throw new Error("Resume not found.");
+    if (data.content) await syncResumeLinks(tx, user.id, saved[0].id, data.content);
+  });
   return { updatedAt };
 }

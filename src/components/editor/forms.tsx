@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { newBullet, newLink, newDegree, newEntry, newPaper, newSchool, newSkillRow } from "@/lib/resume/factories";
-import type { Bullet, Entry, Header, Paper, School, Section } from "@/lib/resume/schema";
+import type { Bullet, Degree, Entry, Header, Paper, School, Section } from "@/lib/resume/schema";
 import { dateRangeIssues, formatRange, formatYearMonth, singleDateIssues } from "@/lib/resume/dates";
 import { DateRangeFields, SingleDateField, useDateFormat } from "./dateFields";
 import {
@@ -218,20 +218,31 @@ function EntryCard({
       onDelete={onDelete}
       handle={handle}
     >
-      <div className="grid grid-cols-2 gap-2">
-        <Field label="Title">
-          <TextInput value={entry.title} onChange={(v) => update((e) => void (e.title = v))} />
-        </Field>
-        <Field label="Organization">
-          <TextInput value={entry.org} onChange={(v) => update((e) => void (e.org = v))} />
-        </Field>
-        <Field label="Location" className="col-span-2">
-          <TextInput value={entry.location} onChange={(v) => update((e) => void (e.location = v))} />
-        </Field>
-      </div>
-      <DateRangeFields value={entry.dates} onChange={(dates) => update((e) => void (e.dates = dates))} />
+      <EntryFields value={entry} update={update} />
       <BulletsEditor bullets={entry.bullets} update={(recipe) => update((e) => recipe(e.bullets))} />
     </CollapsibleItem>
+  );
+}
+
+type EntryCore = Pick<Entry, "title" | "org" | "location" | "dates">;
+
+/** Title, organization, location and dates (shared with library items). */
+export function EntryFields({ value, update }: { value: EntryCore; update: Update<EntryCore> }) {
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Title">
+          <TextInput value={value.title} onChange={(v) => update((e) => void (e.title = v))} />
+        </Field>
+        <Field label="Organization">
+          <TextInput value={value.org} onChange={(v) => update((e) => void (e.org = v))} />
+        </Field>
+        <Field label="Location" className="col-span-2">
+          <TextInput value={value.location} onChange={(v) => update((e) => void (e.location = v))} />
+        </Field>
+      </div>
+      <DateRangeFields value={value.dates} onChange={(dates) => update((e) => void (e.dates = dates))} />
+    </>
   );
 }
 
@@ -287,44 +298,53 @@ function PaperCard({
       onDelete={onDelete}
       handle={handle}
     >
-      <div className="grid grid-cols-2 gap-2">
-        <Field label="Title" className="col-span-2">
-          <TextInput value={paper.title} onChange={(v) => update((p) => void (p.title = v))} />
-        </Field>
-        <Field label="Authors" className="col-span-2">
-          <TextInput
-            placeholder="A. Lovelace, C. Babbage"
-            value={paper.authors}
-            onChange={(v) => update((p) => void (p.authors = v))}
-          />
-        </Field>
-        <Field label="Venue">
-          <TextInput
-            placeholder="NeurIPS 2025 / Nature / arXiv"
-            value={paper.venue}
-            onChange={(v) => update((p) => void (p.venue = v))}
-          />
-        </Field>
-        <SingleDateField value={paper.date} onChange={(date) => update((p) => void (p.date = date))} />
-        <Field label="Link (DOI / URL)" className="col-span-2">
-          <TextInput
-            placeholder="https://doi.org/…"
-            value={paper.url ?? ""}
-            onChange={(v) =>
-              update((p) => {
-                if (v) p.url = v;
-                else delete p.url;
-              })
-            }
-          />
-        </Field>
-      </div>
+      <PaperFields value={paper} update={update} />
       <BulletsEditor
         label="Bullets (optional)"
         bullets={paper.bullets}
         update={(recipe) => update((p) => recipe(p.bullets))}
       />
     </CollapsibleItem>
+  );
+}
+
+type PaperCore = Pick<Paper, "title" | "authors" | "venue" | "date" | "url">;
+
+/** Title, authors, venue, date and link (shared with library items). */
+export function PaperFields({ value, update }: { value: PaperCore; update: Update<PaperCore> }) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <Field label="Title" className="col-span-2">
+        <TextInput value={value.title} onChange={(v) => update((p) => void (p.title = v))} />
+      </Field>
+      <Field label="Authors" className="col-span-2">
+        <TextInput
+          placeholder="A. Lovelace, C. Babbage"
+          value={value.authors}
+          onChange={(v) => update((p) => void (p.authors = v))}
+        />
+      </Field>
+      <Field label="Venue">
+        <TextInput
+          placeholder="NeurIPS 2025 / Nature / arXiv"
+          value={value.venue}
+          onChange={(v) => update((p) => void (p.venue = v))}
+        />
+      </Field>
+      <SingleDateField value={value.date} onChange={(date) => update((p) => void (p.date = date))} />
+      <Field label="Link (DOI / URL)" className="col-span-2">
+        <TextInput
+          placeholder="https://doi.org/…"
+          value={value.url ?? ""}
+          onChange={(v) =>
+            update((p) => {
+              if (v) p.url = v;
+              else delete p.url;
+            })
+          }
+        />
+      </Field>
+    </div>
   );
 }
 
@@ -494,35 +514,41 @@ function SchoolCard({
         </IconButton>
       </div>
       <div className="mt-2 pl-6">
-        <span className="mb-1 block text-xs font-medium text-zinc-500">Degrees</span>
-        <SortableList
-          items={school.degrees}
-          className="space-y-1.5"
-          onMove={(from, to) => update((s) => moveItem(s.degrees, from, to))}
-          renderItem={(degree, i, handle) => (
-            <div className="flex items-start gap-1 rounded-md border border-zinc-200 bg-white p-1.5">
-              <DragHandle handle={handle} label="Drag degree" />
-              <div className="min-w-0 flex-1 space-y-1.5">
-                <TextInput
-                  aria-label="Degree"
-                  placeholder="BS in Computer Science"
-                  value={degree.name}
-                  onChange={(v) => update((s) => void (s.degrees[i].name = v))}
-                />
-                <DateRangeFields
-                  value={degree.dates}
-                  onChange={(dates) => update((s) => void (s.degrees[i].dates = dates))}
-                />
-              </div>
-              <IconButton label="Delete degree" tone="danger" onClick={() => update((s) => void s.degrees.splice(i, 1))}>
-                <TrashIcon />
-              </IconButton>
+        <DegreesEditor degrees={school.degrees} update={(recipe) => update((s) => recipe(s.degrees))} />
+      </div>
+    </div>
+  );
+}
+
+/** A school's degrees: name and dates, reorderable (shared with library items). */
+export function DegreesEditor({ degrees, update }: { degrees: Degree[]; update: Update<Degree[]> }) {
+  return (
+    <div>
+      <span className="mb-1 block text-xs font-medium text-zinc-500">Degrees</span>
+      <SortableList
+        items={degrees}
+        className="space-y-1.5"
+        onMove={(from, to) => update((d) => moveItem(d, from, to))}
+        renderItem={(degree, i, handle) => (
+          <div className="flex items-start gap-1 rounded-md border border-zinc-200 bg-white p-1.5">
+            <DragHandle handle={handle} label="Drag degree" />
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <TextInput
+                aria-label="Degree"
+                placeholder="BS in Computer Science"
+                value={degree.name}
+                onChange={(v) => update((d) => void (d[i].name = v))}
+              />
+              <DateRangeFields value={degree.dates} onChange={(dates) => update((d) => void (d[i].dates = dates))} />
             </div>
-          )}
-        />
-        <div className="mt-1.5">
-          <AddButton onClick={() => update((s) => void s.degrees.push(newDegree()))}>Degree</AddButton>
-        </div>
+            <IconButton label="Delete degree" tone="danger" onClick={() => update((d) => void d.splice(i, 1))}>
+              <TrashIcon />
+            </IconButton>
+          </div>
+        )}
+      />
+      <div className="mt-1.5">
+        <AddButton onClick={() => update((d) => void d.push(newDegree()))}>Degree</AddButton>
       </div>
     </div>
   );

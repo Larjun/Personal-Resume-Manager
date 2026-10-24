@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import { listResumes } from "@/server/resumes";
 import { AccountMenu } from "@/components/auth/AccountMenu";
@@ -12,9 +13,14 @@ export default function Home() {
           <h1 className="text-2xl font-semibold tracking-tight">Resumes</h1>
           <p className="text-sm text-zinc-500">Create, edit and export your resumes.</p>
         </div>
-        <Suspense>
-          <AccountMenu />
-        </Suspense>
+        <div className="flex items-center gap-4">
+          <Link href="/library" className="text-sm font-medium text-zinc-700 underline-offset-2 hover:underline">
+            Library
+          </Link>
+          <Suspense>
+            <AccountMenu />
+          </Suspense>
+        </div>
       </header>
       <CreateResumeForm />
       <Suspense fallback={<p className="mt-6 text-sm text-zinc-500">Loading resumes…</p>}>

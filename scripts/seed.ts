@@ -58,6 +58,7 @@ async function main() {
   const { resumes } = await import("@/db/schema");
   const { isNull } = await import("drizzle-orm");
   const { parseResumePdf } = await import("./parse-resume-pdf");
+  const { syncResumeLinks } = await import("@/db/resume-links");
 
   const userId = await ensureDevUser();
 
@@ -70,6 +71,8 @@ async function main() {
     .insert(resumes)
     .values({ id: SEED_ID, userId, title, pageSize: "Letter", content, createdAt: now, updatedAt: now })
     .onConflictDoUpdate({ target: resumes.id, set: { userId, title, content, updatedAt: now } });
+  // Re-seeding replaces the content, so drop links an earlier import may have created.
+  await syncResumeLinks(db, userId, SEED_ID, content);
 
   const claimed = await db
     .update(resumes)

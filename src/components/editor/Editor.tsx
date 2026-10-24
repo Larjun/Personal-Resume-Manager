@@ -11,14 +11,15 @@ import { usePagination } from "@/lib/pagination/usePagination";
 import { DateFormatContext } from "./dateFields";
 import { HeaderForm, SectionCard, type Update } from "./forms";
 import { moveItem, SortableList } from "./SortableList";
-import { useAutosave, type EditorDoc, type SaveStatus } from "./useAutosave";
+import { resumeAutosave, useAutosave, type EditorDoc } from "./useAutosave";
 import { Preview } from "./Preview";
+import { SaveIndicator } from "./SaveIndicator";
 
 export function Editor({ id, initial }: { id: string; initial: EditorDoc }) {
   const router = useRouter();
   const [doc, setDoc] = useState(initial);
   const docRef = useRef(initial);
-  const { status, schedule, flush } = useAutosave(id, initial);
+  const { status, schedule, flush } = useAutosave(id, initial, resumeAutosave);
 
   const update: Update<EditorDoc> = useCallback(
     (recipe) => {
@@ -166,21 +167,5 @@ function AddSection({ onAdd }: { onAdd: (section: Section) => void }) {
         </button>
       ))}
     </div>
-  );
-}
-
-function SaveIndicator({ status, onRetry }: { status: SaveStatus; onRetry: () => void }) {
-  if (status === "error") {
-    return (
-      <button onClick={onRetry} className="text-xs font-medium text-red-600 hover:underline">
-        Save failed, retry
-      </button>
-    );
-  }
-  const label = { saved: "Saved", unsaved: "Unsaved changes", saving: "Saving…" }[status];
-  return (
-    <span className="text-xs text-zinc-500" aria-live="polite">
-      {label}
-    </span>
   );
 }
