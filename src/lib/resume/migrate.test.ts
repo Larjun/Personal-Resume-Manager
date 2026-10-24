@@ -40,7 +40,7 @@ describe("ResumeContentSchema migration", () => {
       sections: [],
     };
     expect(ResumeContentSchema.parse(v1)).toEqual({
-      version: 4,
+      version: 5,
       settings: { dateFormat: "long" },
       header: {
         name: "Ada",
@@ -77,7 +77,7 @@ describe("ResumeContentSchema migration", () => {
       ],
     };
     const out = ResumeContentSchema.parse(v2);
-    expect(out.version).toBe(4);
+    expect(out.version).toBe(5);
     expect(out.settings.dateFormat).toBe("short");
     const [exp, edu, pubs] = out.sections;
     expect(exp.type === "entries" && exp.entries.map((e) => e.dates)).toEqual([
@@ -115,13 +115,26 @@ describe("ResumeContentSchema migration", () => {
     expect(skills.type === "skills" && skills.rows[0]).toMatchObject(noItem);
   });
 
-  it("leaves current-version content untouched", () => {
+  it("upgrades v4 entries sections with an entryKind guessed from the heading", () => {
+    const entries = (id: string, heading: string) => ({ id, heading, type: "entries", entries: [] });
     const v4 = {
       version: 4,
+      settings: { dateFormat: "long" },
+      header: { name: "", email: "", location: "", phone: "", links: [] },
+      sections: [entries("a", "Experience"), entries("b", "Personal Projects"), entries("c", "Leadership")],
+    };
+    const out = ResumeContentSchema.parse(v4);
+    expect(out.version).toBe(5);
+    expect(out.sections.map((s) => s.type === "entries" && s.entryKind)).toEqual(["experience", "project", "experience"]);
+  });
+
+  it("leaves current-version content untouched", () => {
+    const v5 = {
+      version: 5,
       settings: { dateFormat: "numeric" },
       header: { name: "", email: "", location: "", phone: "", links: [] },
-      sections: [],
+      sections: [{ id: "s", heading: "Things I Built", type: "entries", entryKind: "project", entries: [] }],
     };
-    expect(ResumeContentSchema.parse(v4)).toEqual(v4);
+    expect(ResumeContentSchema.parse(v5)).toEqual(v5);
   });
 });

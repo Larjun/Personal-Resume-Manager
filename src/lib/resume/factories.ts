@@ -2,6 +2,7 @@ import type {
   Bullet,
   Degree,
   Entry,
+  EntryKind,
   Link,
   Paper,
   ResumeContent,
@@ -74,13 +75,19 @@ export const DEFAULT_HEADINGS: Record<SectionType, string> = {
   skills: "Skills",
 };
 
+/** An Experience or Projects section with one blank entry. */
+export function newEntriesSection(entryKind: EntryKind, heading = entryKind === "project" ? "Projects" : "Experience"): Section {
+  return { id: newId(), heading, type: "entries", entryKind, entries: [newEntry()] };
+}
+
+/** A section of `type`; an "entries" section is Experience (see newEntriesSection). */
 export function newSection(type: SectionType, heading = DEFAULT_HEADINGS[type]): Section {
   const base = { id: newId(), heading };
   switch (type) {
     case "summary":
       return { ...base, type, text: "", ...NO_ITEM_SOURCE };
     case "entries":
-      return { ...base, type, entries: [newEntry()] };
+      return newEntriesSection("experience", heading);
     case "publications":
       return { ...base, type, papers: [newPaper()] };
     case "education":

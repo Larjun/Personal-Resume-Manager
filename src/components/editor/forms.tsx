@@ -24,11 +24,13 @@ type SectionOf<K extends Section["type"]> = Extract<Section, { type: K }>;
 
 const SECTION_LABEL: Record<Section["type"], string> = {
   summary: "Summary",
-  entries: "Entries",
+  entries: "Experience",
   publications: "Publications",
   education: "Education",
   skills: "Skills",
 };
+
+const sectionLabel = (s: Section) => (s.type === "entries" && s.entryKind === "project" ? "Projects" : SECTION_LABEL[s.type]);
 
 const card = "rounded-lg border border-zinc-200 bg-white";
 
@@ -108,11 +110,14 @@ export function SectionCard({
   section,
   update,
   onDelete,
+  onAddFromLibrary,
   handle,
 }: {
   section: Section;
   update: Update<Section>;
   onDelete: () => void;
+  /** Opens the library picker for this section. */
+  onAddFromLibrary: () => void;
   handle: DragHandleProps;
 }) {
   return (
@@ -128,8 +133,16 @@ export function SectionCard({
           }}
           className="min-w-0 flex-1 rounded px-1.5 py-1 text-sm font-semibold outline-none hover:bg-zinc-50 focus:bg-zinc-50 focus:ring-1 focus:ring-zinc-300"
         />
+        <button
+          type="button"
+          onClick={onAddFromLibrary}
+          title="Copy items from your library into this section"
+          className="shrink-0 rounded-md border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-700 hover:border-zinc-400 hover:bg-zinc-50"
+        >
+          + From library
+        </button>
         <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-500">
-          {SECTION_LABEL[section.type]}
+          {sectionLabel(section)}
         </span>
         <IconButton
           label="Delete section"

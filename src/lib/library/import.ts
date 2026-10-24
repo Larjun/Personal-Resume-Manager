@@ -61,12 +61,9 @@ function units(content: ResumeContent): Unit[] {
       case "summary":
         out.push({ kind: "summary", item: s, bullets: [] });
         break;
-      case "entries": {
-        // Sections are just "entries"; the heading tells projects from experience.
-        const kind = /project/i.test(s.heading) ? "project" : "experience";
-        for (const e of s.entries) out.push({ kind, item: e, bullets: e.bullets });
+      case "entries":
+        for (const e of s.entries) out.push({ kind: s.entryKind, item: e, bullets: e.bullets });
         break;
-      }
       case "publications":
         for (const p of s.papers) out.push({ kind: "publication", item: p, bullets: p.bullets });
         break;

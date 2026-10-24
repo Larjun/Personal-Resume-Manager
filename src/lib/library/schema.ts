@@ -12,7 +12,7 @@ export const LIBRARY_KINDS = ["experience", "project", "publication", "education
 export const LibraryKindSchema = z.enum(LIBRARY_KINDS);
 export type LibraryKind = z.infer<typeof LibraryKindSchema>;
 
-/** Experience and project both map to the resume's "entries" section. */
+/** Experience and project both map to the resume's "entries" section (its entryKind says which). */
 const EntryFieldsSchema = EntrySchema.pick({ title: true, org: true, location: true, dates: true });
 const PaperFieldsSchema = PaperSchema.pick({ title: true, authors: true, venue: true, date: true, url: true });
 const SchoolFieldsSchema = SchoolSchema.pick({ school: true, location: true, degrees: true });

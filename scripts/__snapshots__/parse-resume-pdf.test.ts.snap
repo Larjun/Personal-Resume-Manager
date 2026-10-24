@@ -247,6 +247,7 @@ exports[`parseResumePdf(seed/resume.pdf) > matches the snapshot 1`] = `
           "visible": true,
         },
       ],
+      "entryKind": "experience",
       "heading": "Experience",
       "id": "id-11",
       "type": "entries",
@@ -320,6 +321,7 @@ exports[`parseResumePdf(seed/resume.pdf) > matches the snapshot 1`] = `
           "visible": true,
         },
       ],
+      "entryKind": "project",
       "heading": "Projects",
       "id": "id-31",
       "type": "entries",
@@ -416,6 +418,6 @@ exports[`parseResumePdf(seed/resume.pdf) > matches the snapshot 1`] = `
   "settings": {
     "dateFormat": "long",
   },
-  "version": 4,
+  "version": 5,
 }
 `;

@@ -36,6 +36,11 @@ export function classifyContacts(items: LegacyContact[]): HeaderContactFields {
   return out;
 }
 
+/** Whether an entries section holds projects, judged by its heading (upgrades and the PDF parser). */
+export function guessEntryKind(heading: string): "experience" | "project" {
+  return /project/i.test(heading) ? "project" : "experience";
+}
+
 export function migrateContent(input: unknown): unknown {
   if (!input || typeof input !== "object") return input;
   let data = input as Record<string, unknown>;
@@ -98,6 +103,16 @@ export function migrateContent(input: unknown): unknown {
       return out;
     });
     data = { ...data, version: 4, sections };
+  }
+
+  // v4 → v5: entries sections say whether they hold experience or projects
+  // (until now only the heading said so).
+  if (data.version === 4) {
+    type Sec = Record<string, unknown> & { type: string; heading?: string };
+    const sections = ((data.sections ?? []) as Sec[]).map((s) =>
+      s.type === "entries" ? { ...s, entryKind: guessEntryKind(s.heading ?? "") } : s,
+    );
+    data = { ...data, version: 5, sections };
   }
   return data;
 }

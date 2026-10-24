@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { newBullet, newEntry, newSection } from "@/lib/resume/factories";
+import { newBullet, newEntriesSection, newEntry, newSection } from "@/lib/resume/factories";
 import { CONTENT_VERSION, type Entry, type ResumeContent, type Section } from "@/lib/resume/schema";
 import { planResumeImport, type ExistingItem } from "./import";
 
@@ -10,7 +10,8 @@ const counter = () => {
 const NOW = new Date("2026-10-24T12:00:00.000Z");
 const EARLIER = new Date("2026-10-01T09:00:00.000Z");
 
-const entries = (heading: string, list: Entry[]): Section => ({ ...newSection("entries", heading), entries: list } as Section);
+const entries = (heading: string, list: Entry[]): Section =>
+  ({ ...newEntriesSection(heading === "Projects" ? "project" : "experience", heading), entries: list }) as Section;
 const job = (title: string, org: string, bullets: string[]): Entry => ({
   ...newEntry(),
   title,

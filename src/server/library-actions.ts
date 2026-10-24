@@ -4,6 +4,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
+import { loadLibraryItems, type LibraryItem } from "@/db/library-queries";
 import type { DbOrTx } from "@/db/resume-links";
 import { bulletVariants, libraryBullets, libraryItems } from "@/db/schema";
 import { emptyLibraryItem, newLibraryBullet } from "@/lib/library/factories";
@@ -24,6 +25,12 @@ import { requireUser } from "./auth";
 /** WHERE clause for "this library item, and only if the user owns it". */
 function ownItem(id: string, userId: string) {
   return and(eq(libraryItems.id, LibraryItemIdSchema.parse(id)), eq(libraryItems.userId, userId));
+}
+
+/** The user's whole library, for the resume editor's "Add from library" drawer (loaded when it opens). */
+export async function fetchLibraryItems(): Promise<LibraryItem[]> {
+  const user = await requireUser();
+  return loadLibraryItems(db, user.id);
 }
 
 /** Creates a blank item (with one empty bullet if the kind has a pool). Returns its id. */

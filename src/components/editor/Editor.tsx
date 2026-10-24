@@ -4,9 +4,11 @@ import { produce } from "immer";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
-import { newSection } from "@/lib/resume/factories";
+import { AddFromLibraryDrawer } from "@/components/library/AddFromLibraryDrawer";
+import { addLibraryItems } from "@/lib/library/copy";
+import { newEntriesSection, newSection } from "@/lib/resume/factories";
 import { DATE_FORMAT_LABEL, DATE_FORMATS, type DateFormat } from "@/lib/resume/dates";
-import { PAGE_SIZES, type Section, type SectionType } from "@/lib/resume/schema";
+import { PAGE_SIZES, type Section } from "@/lib/resume/schema";
 import { usePagination } from "@/lib/pagination/usePagination";
 import { DateFormatContext } from "./dateFields";
 import { HeaderForm, SectionCard, type Update } from "./forms";
@@ -20,6 +22,10 @@ export function Editor({ id, initial }: { id: string; initial: EditorDoc }) {
   const [doc, setDoc] = useState(initial);
   const docRef = useRef(initial);
   const { status, schedule, flush } = useAutosave(id, initial, resumeAutosave);
+  // The section whose "From library" panel is open.
+  const [librarySectionId, setLibrarySectionId] = useState<string | null>(null);
+  const closeLibrary = useCallback(() => setLibrarySectionId(null), []);
+  const librarySection = sectionsById(doc.content.sections, librarySectionId);
 
   const update: Update<EditorDoc> = useCallback(
     (recipe) => {
@@ -38,7 +44,7 @@ export function Editor({ id, initial }: { id: string; initial: EditorDoc }) {
 
   return (
     <div className="flex h-dvh flex-col">
-      <header className="flex shrink-0 items-center gap-3 border-b border-zinc-200 bg-white px-4 py-2">
+      <header className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-zinc-200 bg-white px-4 py-2">
         <Link href="/" onClick={() => void flush()} className="text-sm text-zinc-500 hover:text-zinc-900">
           ← Resumes
         </Link>
@@ -50,7 +56,7 @@ export function Editor({ id, initial }: { id: string; initial: EditorDoc }) {
             const v = e.target.value;
             update((d) => void (d.title = v));
           }}
-          className="min-w-0 flex-1 rounded px-2 py-1 text-sm font-semibold outline-none hover:bg-zinc-50 focus:bg-zinc-50 focus:ring-1 focus:ring-zinc-300"
+          className="min-w-40 flex-1 rounded px-2 py-1 text-sm font-semibold outline-none hover:bg-zinc-50 focus:bg-zinc-50 focus:ring-1 focus:ring-zinc-300"
         />
         <SaveIndicator status={status} onRetry={() => void flush()} />
         {pageCount !== undefined && (
@@ -128,6 +134,7 @@ export function Editor({ id, initial }: { id: string; initial: EditorDoc }) {
                     handle={handle}
                     update={(recipe) => update((d) => recipe(d.content.sections[i]))}
                     onDelete={() => update((d) => void d.content.sections.splice(i, 1))}
+                    onAddFromLibrary={() => setLibrarySectionId(section.id)}
                   />
                 )}
               />
@@ -140,27 +147,40 @@ export function Editor({ id, initial }: { id: string; initial: EditorDoc }) {
           <Preview pagination={pagination} />
         </section>
       </div>
+
+      {librarySection && (
+        <AddFromLibraryDrawer
+          section={librarySection}
+          content={doc.content}
+          onClose={closeLibrary}
+          onAdd={(picks) => {
+            update((d) => addLibraryItems(d.content, picks, { sectionId: librarySection.id }));
+            closeLibrary();
+          }}
+        />
+      )}
     </div>
   );
 }
 
-const SECTION_CHOICES: { type: SectionType; label: string }[] = [
-  { type: "entries", label: "Experience / projects" },
-  { type: "publications", label: "Publications" },
-  { type: "education", label: "Education" },
-  { type: "skills", label: "Skills" },
-  { type: "summary", label: "Summary" },
+const SECTION_CHOICES: { label: string; make: () => Section }[] = [
+  { label: "Experience", make: () => newEntriesSection("experience") },
+  { label: "Projects", make: () => newEntriesSection("project") },
+  { label: "Publications", make: () => newSection("publications") },
+  { label: "Education", make: () => newSection("education") },
+  { label: "Skills", make: () => newSection("skills") },
+  { label: "Summary", make: () => newSection("summary") },
 ];
 
 function AddSection({ onAdd }: { onAdd: (section: Section) => void }) {
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-zinc-300 p-3">
       <span className="text-xs font-medium text-zinc-500">Add section:</span>
-      {SECTION_CHOICES.map(({ type, label }) => (
+      {SECTION_CHOICES.map(({ label, make }) => (
         <button
-          key={type}
+          key={label}
           type="button"
-          onClick={() => onAdd(newSection(type))}
+          onClick={() => onAdd(make())}
           className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-700 hover:border-zinc-400 hover:bg-zinc-50"
         >
           {label}
@@ -169,3 +189,5 @@ function AddSection({ onAdd }: { onAdd: (section: Section) => void }) {
     </div>
   );
 }
+
+const sectionsById = (sections: Section[], id: string | null) => (id ? sections.find((s) => s.id === id) : undefined);

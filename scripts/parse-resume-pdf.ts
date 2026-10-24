@@ -12,7 +12,7 @@
 import { createRequire } from "node:module";
 import { NO_BULLET_SOURCE, NO_ITEM_SOURCE, newId as defaultNewId } from "@/lib/resume/factories";
 import { parseDateRange, parseYearMonth } from "@/lib/resume/dates";
-import { classifyContacts } from "@/lib/resume/migrate";
+import { classifyContacts, guessEntryKind } from "@/lib/resume/migrate";
 import {
   CONTENT_VERSION,
   ResumeContentSchema,
@@ -151,7 +151,7 @@ export function parseLines(lines: PdfLine[], newId: () => string = defaultNewId)
               ? { ...base, type, rows: [] }
               : type === "publications"
                 ? { ...base, type, papers: [] }
-                : { ...base, type, entries: [] };
+                : { ...base, type, entryKind: guessEntryKind(heading), entries: [] };
       sections.push(section);
       appendTarget = null;
       continue;

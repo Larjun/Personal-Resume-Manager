@@ -116,9 +116,14 @@ export const SummarySectionSchema = z.object({
   ...itemSource,
 });
 
+export const ENTRY_KINDS = ["experience", "project"] as const;
+export const EntryKindSchema = z.enum(ENTRY_KINDS);
+
 export const EntriesSectionSchema = z.object({
   ...sectionBase,
   type: z.literal("entries"),
+  /** Experience or projects. Fixed per section; the library picker offers only this kind. */
+  entryKind: EntryKindSchema,
   entries: z.array(EntrySchema),
 });
 
@@ -148,7 +153,7 @@ export const SectionSchema = z.discriminatedUnion("type", [
   SkillsSectionSchema,
 ]);
 
-export const CONTENT_VERSION = 4;
+export const CONTENT_VERSION = 5;
 
 const CurrentContentSchema = z.object({
   version: z.literal(CONTENT_VERSION),
@@ -172,6 +177,7 @@ export type Degree = z.infer<typeof DegreeSchema>;
 export type School = z.infer<typeof SchoolSchema>;
 export type SkillRow = z.infer<typeof SkillRowSchema>;
 export type Section = z.infer<typeof SectionSchema>;
+export type EntryKind = z.infer<typeof EntryKindSchema>;
 export type SectionType = Section["type"];
 export type ResumeContent = z.infer<typeof CurrentContentSchema>;
 
