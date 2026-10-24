@@ -13,9 +13,14 @@ The work happens in stages. Keep the data model structured so that later stages 
   - **1b: editor.** Structured forms for each section type. Sections, entries, bullets and contacts can be reordered with dnd-kit. Section headings can be renamed. Section types: header (name, email, phone, location as plain text, plus links with a URL), summary, entries (experience/projects), publications (title, authors, venue, date, link, optional bullets), education, skills. Entries and papers collapse (closed by default) and have an include checkbox (`visible`): unchecked items stay in the editor but are left out of the resume, and a section whose items are all unchecked disappears. A4/Letter choice per resume. Debounced autosave.
   - **1c: pagination.** Measure blocks off-screen and place them onto fixed-size pages with keep-together rules. Page numbers and page count appear in the preview UI.
   - **1d: export.** A print view with `@page { size; margin: 0 }` and one fixed-size div per page. Text stays selectable.
+- **Stage 2 (done): master library.** Everything the user has done, written once; resumes copy from it (see "Master library" under Conventions).
+  - **2a: library.** `/library` (tabs by kind, search, tag filter, "Used in N resumes", create) and `/library/[id]` (fields for the kind, tags, bullet pool with drag-to-reorder and labeled variants). Autosaves.
+  - **2b: add from library.** "+ From library" in every resume section's header opens a picker limited to the kind that section takes. Checked items are copied in with the chosen bullets and wording of each. Items already in the resume show checked and locked; they can't be added twice.
+  - **2c: sync.** "Library updated" + "Pull latest" (word diff via the `diff` package), "Update library" on bullets edited in a resume (replace the wording or save as a new variant), "Source deleted".
+  - **2d: import and tags.** "Import into library" on a resume (`npm run library:import` from the terminal), tag input with autocomplete, tag alias map.
 - **Later stages** are specified in `docs/stage-prompts.md`, one prompt per stage:
   - 1.5 (done) auth (Supabase: email + Google) and account settings
-  - 2 master library: items, bullet pool, variants, tags. This is why every entity has a stable `id`.
+  - 2 (done) master library: items, bullet pool, variants, tags. This is why every entity has a stable `id`.
   - 3 AI resume parsing and usage logging
   - 3.5 usage dashboard and limits
   - 4 AI bullet writing
@@ -43,6 +48,7 @@ npm run dev           # dev server
 npm run db:generate   # generate a migration after editing src/db/schema.ts
 npm run db:migrate    # apply migrations to the DATABASE_URL database
 npm run seed          # create/find the dev user (SEED_USER_*), upsert the seed resume it owns
+npm run library:import [-- <resume-id>]  # import a resume (default: the seed) into its owner's library; safe to re-run
 npm test              # vitest
 npm run lint
 npx tsc --noEmit      # typecheck
@@ -51,7 +57,8 @@ npx tsc --noEmit      # typecheck
 ## Layout
 
 ```
-src/app/                    routes: / (list), /resumes/[id] (editor), /resumes/[id]/print, /account
+src/app/                    routes: / (list), /resumes/[id] (editor), /resumes/[id]/print, /account,
+                            /library, /library/[id]
 src/app/(auth)/             /login, /signup, /forgot-password, /reset-password (shared narrow layout)
 src/app/auth/confirm        GET handler for every email link (verifyOtp with token_hash)
 src/app/auth/callback       GET handler for Google OAuth (exchangeCodeForSession)
@@ -63,17 +70,27 @@ src/server/auth-errors.ts   Supabase auth error → log line + user message
 src/server/resumes.ts       read queries (NOT "use server", so they aren't exposed as actions)
 src/server/actions.ts       "use server" mutations (all input validated with zod)
 src/server/auth-actions.ts  "use server" sign in/up/out, Google, resend, forgot/reset password
+src/server/library.ts       library reads: list/get items, sources a resume copied from, all tags
+src/server/library-actions.ts "use server" create/save/delete item, fetch for pickers, push bullet, import
 src/lib/supabase/           server (cookies), admin (service role, server-only) clients
 src/components/auth/        auth forms, FormParts (Field, SubmitButton, messages), shared classes
 src/components/account/     account page sections
 src/lib/auth/redirect.ts    safeNextPath() for post-login redirects, public route list
 src/db/                     drizzle schema + client
+src/db/library-queries.ts   library loader + tags query (explicit user id; not server-only, so scripts can use them)
+src/db/library-import.ts    importResumeIntoLibrary() transaction (same: explicit user id)
+src/db/resume-links.ts      syncResumeLinks(): resume_item_links from content (same)
 src/lib/resume/             content zod schema (source of truth), factories, helpers
+src/lib/library/            schema (kinds, fields), pool (save diff), copy (add from library),
+                            sync (status, pull, bullet sync), import, links, display (titles, search)
+src/lib/tags.ts             tag normalization + alias map
 src/lib/page/sizes.ts       page geometry (A4/Letter px @96dpi, margins): the ONLY place for it
 src/lib/pagination/         content → blocks, paginate() (pure), usePagination hook
 src/components/template/    resume block renderers (shared by measure layer, preview, print)
-src/components/editor/      editor forms, SortableList
-scripts/                    seed + PDF parser (run with tsx)
+src/components/editor/      editor forms, SortableList, useAutosave (generic), librarySync (sources,
+                            badges, Pull latest, Update library), TagInput, SaveIndicator
+src/components/library/     library list, item editor, add-from-library drawer
+scripts/                    seed, PDF parser, library import (run with tsx)
 drizzle/                    generated SQL migrations (committed)
 ```
 
@@ -98,6 +115,8 @@ The app depends on these settings; they aren't in code. Redo them for each envir
 - **Content model:** `src/lib/resume/schema.ts` (zod) is the single source of truth. TypeScript types are inferred from it. Never declare a content type by hand.
 - **Stable ids:** every section, entry, bullet, contact, school, degree and skill row has a `crypto.randomUUID()` id. Create new items with the factories in `src/lib/resume/factories.ts`. Duplicating a resume gives every item a new id.
 - **Storage and versioning:** content lives in the `resumes.content` jsonb column with a `version` field. Any change to its stored shape bumps `CONTENT_VERSION` and adds an upgrade step in `src/lib/resume/migrate.ts`. That step runs inside `ResumeContentSchema` (`z.preprocess`), so old rows are upgraded on read and written back in the new shape on the next save. No SQL data migration is needed. Validate with zod at every boundary: server actions, the seed script, and rows read from the DB.
+- **Content versions so far:** v4 added library source fields, v5 `entryKind` on entries sections, v6 `sourceText` on bullets. `CONTENT_VERSION` is 6.
+- **Entries sections** have an `entryKind` (`experience` | `project`), set when the section is created ("Add section" offers Experience and Projects separately) and never changed by renaming. Code that needs to tell projects from experience reads `entryKind`, never the heading. Only the v4→v5 upgrade and the PDF parser guess it from the heading (`guessEntryKind`).
 - **Template components** in `src/components/template/` are pure, deterministic, client-safe components. The measure layer, the preview and the print view must all render the same components, so that measured heights match what gets rendered.
 - **Spacing between blocks** uses padding, never margins, so block heights add up exactly when paginating. Typography uses fixed `pt`/`px` sizes and line-heights. Don't use viewport units or responsive classes inside the template.
 - **CSS:** Tailwind is used for app chrome only, and the Turbopack Tailwind loader is scoped to `globals.css` in `next.config.ts` (scoping it to every `*.css` breaks CSS Modules). Template styles live in `src/components/template/template.module.css`.
@@ -126,5 +145,25 @@ The app depends on these settings; they aren't in code. Redo them for each envir
   - Delete uses the admin API; FK cascades remove the user's rows.
 - **Service-role key** (`SUPABASE_SERVICE_ROLE_KEY`) is used only via `src/lib/supabase/admin.ts` (`server-only`) and the seed script. Never `NEXT_PUBLIC_`.
 - **Schema changes** go through `src/db/schema.ts`, then `npm run db:generate` and `npm run db:migrate`. Never edit tables in the Supabase dashboard. Drizzle only manages the `public` schema; Supabase owns `auth`, `storage` and the rest.
-- **Ids:** resume ids are UUIDs. Validate them with `ResumeIdSchema` before querying, because Postgres throws on a malformed UUID.
-- **Pure logic** (`paginate`, parsers, schema helpers) gets vitest tests next to the code as `*.test.ts`.
+- **Ids:** resume and library item ids are UUIDs. Validate them with `ResumeIdSchema` / `LibraryItemIdSchema` before querying, because Postgres throws on a malformed UUID.
+- **Pure logic** (`paginate`, parsers, schema helpers, the `src/lib/library/` modules, tags) gets vitest tests next to the code as `*.test.ts`.
+- **Autosave:** `useAutosave(id, initial, adapter)` debounces saves for both editors. Adapters (`resumeAutosave`, `libraryAutosave`) are module-level constants so the hook's callbacks stay stable. Anything that saves a resume on the server while its editor is open (Import into library) must `flush()` first, lock the editor (`inert`) while it runs, and load the returned content into the editor, or the next autosave overwrites the server's change.
+- **Formatting:** no formatter is installed (`npx prettier` downloads one with 80-column defaults). Match the surrounding code by hand: lines up to about 120 characters.
+- **Dev server:** while the user's `npm run dev` is running, don't create scratch files inside the project or run `next typegen`. Every write triggers a rebuild that refreshes their open tab and can cut off Suspense boundaries mid-stream ("The server could not finish this Suspense boundary"). Run one-off checks inline (`node -e`) from the project directory instead.
+
+### Master library
+
+- **Tables** (all follow the `resumes` pattern: `user_id` cascade, indexed, RLS on):
+  - `library_items`: `kind`, `fields` jsonb, `tags` text[], `updated_at`. Kinds are experience, project, publication, education, skills and summary. `fields` is validated by `LIBRARY_FIELDS_SCHEMAS[kind]` (`src/lib/library/schema.ts`), which picks from the resume content schemas, so copying is field for field.
+  - `library_bullets`: `item_id` (cascade), `position`, `tags`. Only experience, project and publication items have a bullet pool (`KINDS_WITH_BULLETS`). A pool holds more bullets than any one resume uses.
+  - `bullet_variants`: alternative wordings of a bullet: `bullet_id` (cascade), `position`, `text`, `label` (optional, e.g. "short"), `source` (`user` | `ai`, set by the server; AI stages will add `ai` variants and never overwrite the user's text).
+  - `resume_item_links`: which library items each resume copied from. **Derived** from `resumes.content`: `syncResumeLinks()` rewrites a resume's rows in the same transaction as every content write (autosave, duplicate, seed, import). Never write it anywhere else. "Used in N resumes" counts these rows.
+- **Saving an item:** `saveLibraryItem` takes fields, tags and/or the whole bullet pool, and writes them in one transaction under a row lock. Bullet and variant ids are created client-side like content ids. `planPoolWrites` (pure) diffs the pool and writes only changed rows. An id that isn't one of the item's rows is planned as an insert, so another item's or user's id fails on its primary key instead of being overwritten.
+- **`library_items.updated_at` means "something a resume copies changed":** fields, bullet order, variant text or labels. Tag edits never move it, so retagging never flags resumes as "Library updated".
+- **Copy-with-sync rule.** A resume is a self-contained copy. It never changes because the library did, and editing a resume never changes the library. The two meet only through explicit actions:
+  - **Copying** (`addLibraryItems`, `src/lib/library/copy.ts`) gives everything fresh ids and sets source fields: on items `sourceItemId` and `sourceItemUpdatedAt` (the item's `updated_at` at copy time), on bullets `sourceBulletId`, `sourceVariantId` and `sourceText` (the library wording's text at copy, pull or push time). Items land in the section they were added from if it takes their kind (`libraryKindFor`), otherwise in the first section that does, created if missing. A summary replaces the summary text. An item already in the resume is never added again. `cloneWithNewIds` (Duplicate) keeps source fields.
+  - **Status** (`copyStatus`, `src/lib/library/sync.ts`): "Library updated" only when the item's `updated_at` is later than `sourceItemUpdatedAt` **and** pulling would change something (`copyChanges`); "Source deleted" when the item no longer exists. The resume editor loads its sources with the page and refetches them on tab focus and when new items are linked (`useLibrarySources`).
+  - **Pull latest** (`applyLatest`) overwrites copied fields and linked bullets whose library wording changed. It **never overwrites a bullet edited in the resume** (`text ≠ sourceText`), never adds bullets the resume didn't pick, and keeps bullets whose library bullet was deleted. If the copied wording was deleted, the bullet takes its bullet's first remaining wording.
+  - **Update library** (`pushBulletToLibrary`) is the only way resume edits reach the library: on a bullet edited in the resume (`bulletSync`), the user chooses to replace the library wording or save the text as a new variant. Both bump the item's `updated_at`. Bullets only; field edits stay in the resume. The stage prompt's "Keep in this resume only" is the default (just don't press the button).
+- **Import into library** (`planResumeImport`, pure; `importResumeIntoLibrary`, the transaction) is idempotent. Items already linked to an existing library item are skipped. Unlinked items that match an existing item of the same kind (title + organization, school, skill category, or summary text, ignoring case and spacing) are linked to it, and bullets the pool doesn't have yet are appended. Everything else becomes a new item. A re-seeded resume therefore reconnects to its items instead of duplicating them.
+- **Tags** are always saved through `normalizeTags` (`src/lib/tags.ts`): whitespace collapsed, the alias map applied (ts → TypeScript, k8s → Kubernetes…), and duplicates dropped ignoring case. Add new aliases there, with a test. `TagInput` resolves typed tags with `resolveTag` (aliases first, then an existing tag's spelling) and suggests the user's tags, most used first. Item tags describe the role or project (role, domain, context); bullet tags list the technologies the bullet names plus the skill it shows, and `Impact` marks bullets with a number in them.
