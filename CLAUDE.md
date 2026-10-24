@@ -51,12 +51,15 @@ npx tsc --noEmit      # typecheck
 ## Layout
 
 ```
-src/app/                    routes: / (list), /resumes/[id] (editor), /resumes/[id]/print, (auth)/login
+src/app/                    routes: / (list), /resumes/[id] (editor), /resumes/[id]/print
+src/app/(auth)/             /login, /signup, /forgot-password, /reset-password (shared narrow layout)
+src/app/auth/confirm        GET handler for every email link (verifyOtp with token_hash)
+src/app/auth/callback       GET handler for Google OAuth (exchangeCodeForSession)
 src/proxy.ts                session refresh + optimistic redirect to /login (Next 16's middleware)
 src/server/auth.ts          getSessionUser() / requireUser(): the real access gate
 src/server/resumes.ts       read queries (NOT "use server", so they aren't exposed as actions)
 src/server/actions.ts       "use server" mutations (all input validated with zod)
-src/server/auth-actions.ts  "use server" sign-in / sign-out
+src/server/auth-actions.ts  "use server" sign in/up/out, Google, resend, forgot/reset password
 src/lib/supabase/           server (cookies), admin (service role, server-only) clients
 src/lib/auth/redirect.ts    safeNextPath() for post-login redirects, public route list
 src/db/                     drizzle schema + client
@@ -68,6 +71,20 @@ src/components/editor/      editor forms, SortableList
 scripts/                    seed + PDF parser (run with tsx)
 drizzle/                    generated SQL migrations (committed)
 ```
+
+## Supabase dashboard setup (Authentication section)
+
+The app depends on these settings; they aren't in code. Redo them for each environment (Site URL changes in production).
+
+- **URL Configuration:** Site URL `http://localhost:3000`. Redirect URLs: `http://localhost:3000/**` (needed for Google's `redirectTo`).
+- **Providers → Email:** Confirm email **on**. Secure email change **on**. Minimum password length 8.
+- **Providers → Google:** enabled with an OAuth client from Google Cloud Console whose authorized redirect URI is `https://<project-ref>.supabase.co/auth/v1/callback`. Turn on manual identity linking (Stage 1.5c's connect/disconnect).
+- **Emails → SMTP:** Resend (`smtp.resend.com`, port 465, user `resend`, password = Resend API key, sender on a domain verified in Resend). Supabase's built-in sender only reaches project team members and is heavily rate-limited.
+- **Emails → Templates:** links must go to `/auth/confirm` with a token hash, not `{{ .ConfirmationURL }}`, so they work in any browser or device:
+  - Confirm signup: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/`
+  - Reset password: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password`
+  - Change email address: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email_change&next=/account`
+- **Rate Limits:** Supabase's built-in per-IP limits cover sign-in, sign-up, password recovery and email sends. That's our only rate limiting. Keep the defaults unless they get in the way of testing.
 
 ## Conventions
 
@@ -86,6 +103,10 @@ drizzle/                    generated SQL migrations (committed)
 - **Every query filters by `user_id`.** Every read function in `src/server/*.ts`, every server action and every route handler starts with `const user = await requireUser()` and scopes its query to `user.id` (`and(eq(table.id, id), eq(table.userId, user.id))`). Another user's id must behave exactly like a missing one (return `null` → `notFound()`). Pages never query tables directly. `src/proxy.ts` only does an optimistic redirect; never rely on it for access control. It redirects **GET/HEAD navigations only**: a redirect in reply to a server action POST isn't an action response, and the client throws "An unexpected response was received from the server". Actions get their redirect from `requireUser()` instead.
 - **User-data tables** follow the `resumes` pattern: `user_id` (or `id` for `profiles`) references `authUsers` from `drizzle-orm/supabase` with `onDelete: "cascade"`, gets an index, and `.enableRLS()`. Deleting an account in Supabase Auth deletes all of its rows.
 - **Auth in render:** `getSessionUser()` calls `await connection()` before supabase-js runs (it reads `Date.now()`, which `cacheComponents` forbids while prerendering), and it uses `getUser()` so deleted accounts are rejected immediately. Components that call it must sit inside `<Suspense>`. Under streaming, `notFound()` renders the not-found UI with HTTP 200; that's expected.
+- **Auth messages never reveal whether an email has an account.** Forgot password and resend always return the same "check your email" state, even on errors. Sign-up relies on Supabase returning a fake success for existing emails. Sign-in uses one message for unknown email and wrong password.
+- **Auth errors** go through `src/server/auth-errors.ts`: `authErrorMessage(action, error)` logs `[auth] <action> failed: <code> (status N): <message>` on the server and returns a specific user message (in development with a `[dev: …]` suffix showing the raw Supabase code). Resend and forgot password use `silentAuthError()`, which surfaces the error only in development. Never log form data. Unexpected throws land in `src/app/error.tsx`.
+- **Tests** can import `server-only` modules (`vitest.config.mts` aliases it to an empty module).
+- **Redirect targets** from `?next=` or form fields always go through `safeNextPath()` (`src/lib/auth/redirect.ts`).
 - **Service-role key** (`SUPABASE_SERVICE_ROLE_KEY`) is used only via `src/lib/supabase/admin.ts` (`server-only`) and the seed script. Never `NEXT_PUBLIC_`.
 - **Schema changes** go through `src/db/schema.ts`, then `npm run db:generate` and `npm run db:migrate`. Never edit tables in the Supabase dashboard. Drizzle only manages the `public` schema; Supabase owns `auth`, `storage` and the rest.
 - **Ids:** resume ids are UUIDs. Validate them with `ResumeIdSchema` before querying, because Postgres throws on a malformed UUID.
