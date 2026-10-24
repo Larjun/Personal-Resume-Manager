@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { LibraryItemEditor } from "@/components/library/LibraryItemEditor";
-import { getLibraryItem } from "@/server/library";
+import { getLibraryItem, listLibraryTags } from "@/server/library";
 
 export const metadata: Metadata = { title: "Library item · Resume Manager" };
 
@@ -16,7 +16,7 @@ export default function LibraryItemPage({ params }: PageProps<"/library/[id]">) 
 
 async function ItemLoader({ params }: { params: PageProps<"/library/[id]">["params"] }) {
   const { id } = await params;
-  const item = await getLibraryItem(id);
+  const [item, allTags] = await Promise.all([getLibraryItem(id), listLibraryTags()]);
   if (!item) notFound();
   return (
     <LibraryItemEditor
@@ -24,6 +24,7 @@ async function ItemLoader({ params }: { params: PageProps<"/library/[id]">["para
       // Remount when the stored item changed elsewhere so we never edit stale data.
       key={`${item.id}:${item.updatedAt.getTime()}`}
       item={item}
+      allTags={allTags}
     />
   );
 }

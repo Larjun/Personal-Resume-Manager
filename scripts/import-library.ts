@@ -25,8 +25,8 @@ async function main() {
     .where(eq(resumes.id, resumeId));
   if (!resume) throw new Error(`Resume ${resumeId} not found${resumeId === SEED_ID ? "; run npm run seed first" : ""}.`);
 
-  const counts = await importResumeIntoLibrary(db, resume.userId, resumeId);
-  console.log(`Imported "${resume.title}" into the library:`, counts);
+  const result = await importResumeIntoLibrary(db, resume.userId, resumeId);
+  console.log(`Imported "${resume.title}" into the library:`, result?.counts);
   await sql.end();
 }
 

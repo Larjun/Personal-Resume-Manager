@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { newBullet, newEntriesSection, newEntry, newSection } from "@/lib/resume/factories";
 import { CONTENT_VERSION, type Entry, type ResumeContent, type Section } from "@/lib/resume/schema";
-import { planResumeImport, type ExistingItem } from "./import";
+import { importSummary, planResumeImport, type ExistingItem } from "./import";
 
 const counter = () => {
   let n = 0;
@@ -113,5 +113,17 @@ describe("planResumeImport", () => {
     );
     expect(plan.counts).toMatchObject({ created: 1, linked: 1 });
     expect(plan.create[0].bullets.map((b) => b.variants[0].text)).toEqual(["A", "B"]);
+  });
+});
+
+describe("importSummary", () => {
+  it("reports what happened in one sentence", () => {
+    expect(importSummary({ created: 3, linked: 1, alreadyLinked: 9, skipped: 0 })).toBe(
+      "Added 3 new items, linked 1 item to matching library items, 9 items were already in your library.",
+    );
+    expect(importSummary({ created: 0, linked: 0, alreadyLinked: 1, skipped: 2 })).toBe("1 item was already in your library.");
+    expect(importSummary({ created: 0, linked: 0, alreadyLinked: 0, skipped: 3 })).toBe(
+      "Nothing to import: this resume has no items to add.",
+    );
   });
 });

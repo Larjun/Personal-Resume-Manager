@@ -1,6 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { planResumeImport, type ImportPlan, type PlannedBullet } from "@/lib/library/import";
-import { ResumeContentSchema } from "@/lib/resume/schema";
+import { ResumeContentSchema, type ResumeContent } from "@/lib/resume/schema";
 import type { db as Db } from "./index";
 import { loadLibraryItems } from "./library-queries";
 import { syncResumeLinks } from "./resume-links";
@@ -11,13 +11,14 @@ import { bulletVariants, libraryBullets, libraryItems, resumes } from "./schema"
  * single transaction: inserts new items, appends bullets to matched items,
  * saves the resume with source ids, and rewrites its links. Not "server-only"
  * so scripts can run it; app code must pass the requireUser() id.
- * Returns null if the resume doesn't exist or isn't the user's.
+ * Returns the counts and the resume's content with its new source ids, or
+ * null if the resume doesn't exist or isn't the user's.
  */
 export async function importResumeIntoLibrary(
   db: typeof Db,
   userId: string,
   resumeId: string,
-): Promise<ImportPlan["counts"] | null> {
+): Promise<{ counts: ImportPlan["counts"]; content: ResumeContent } | null> {
   return db.transaction(async (tx) => {
     const [row] = await tx
       .select({ content: resumes.content })
@@ -63,6 +64,6 @@ export async function importResumeIntoLibrary(
       await tx.update(resumes).set({ content: plan.content, updatedAt: now }).where(eq(resumes.id, resumeId));
     }
     await syncResumeLinks(tx, userId, resumeId, plan.content);
-    return plan.counts;
+    return { counts: plan.counts, content: plan.content };
   });
 }

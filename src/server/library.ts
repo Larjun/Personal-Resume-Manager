@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { loadLibraryItems, type LibraryItem } from "@/db/library-queries";
+import { loadLibraryItems, loadLibraryTags, type LibraryItem } from "@/db/library-queries";
 import { LibraryItemIdSchema } from "@/lib/library/schema";
 import { requireUser } from "./auth";
 
@@ -20,6 +20,12 @@ export async function getLibraryItem(id: string): Promise<LibraryItem | null> {
   if (!LibraryItemIdSchema.safeParse(id).success) return null;
   const [item] = await loadLibraryItems(db, user.id, [id]);
   return item ?? null;
+}
+
+/** Every tag the user has used, most used first (tag autocomplete). */
+export async function listLibraryTags(): Promise<string[]> {
+  const user = await requireUser();
+  return loadLibraryTags(db, user.id);
 }
 
 /**

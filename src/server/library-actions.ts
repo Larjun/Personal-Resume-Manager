@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
 import { loadLibraryItems, type LibraryItem } from "@/db/library-queries";
+import { importResumeIntoLibrary } from "@/db/library-import";
 import type { DbOrTx } from "@/db/resume-links";
 import { bulletVariants, libraryBullets, libraryItems } from "@/db/schema";
 import { emptyLibraryItem, newLibraryBullet } from "@/lib/library/factories";
@@ -18,7 +19,9 @@ import {
   MAX_VARIANTS_PER_BULLET,
   TagsSchema,
 } from "@/lib/library/schema";
+import type { ImportPlan } from "@/lib/library/import";
 import { newId } from "@/lib/resume/factories";
+import { ResumeIdSchema, type ResumeContent } from "@/lib/resume/schema";
 import { requireUser } from "./auth";
 
 // Every action starts with requireUser() and scopes its queries to that user's rows.
@@ -39,6 +42,21 @@ export async function fetchLibrarySources(ids: string[]): Promise<LibraryItem[]>
   const user = await requireUser();
   const valid = z.array(z.string()).max(500).parse(ids).filter((id) => LibraryItemIdSchema.safeParse(id).success);
   return loadLibraryItems(db, user.id, valid);
+}
+
+/**
+ * "Import into library" on a resume: creates library items from its entries,
+ * links matching ones instead of duplicating them, and saves the resume with
+ * its new source ids. Returns the counts and that content for the editor.
+ */
+export async function importResumeToLibrary(
+  resumeId: string,
+): Promise<{ counts: ImportPlan["counts"]; content: ResumeContent }> {
+  const user = await requireUser();
+  const result = await importResumeIntoLibrary(db, user.id, ResumeIdSchema.parse(resumeId));
+  if (!result) throw new Error("Resume not found.");
+  revalidatePath("/library");
+  return result;
 }
 
 /** Creates a blank item (with one empty bullet if the kind has a pool). Returns its id. */

@@ -91,7 +91,7 @@ describe("BulletPoolInputSchema", () => {
     const [parsed] = BulletPoolInputSchema.parse([
       { id: B1, tags: [" sql ", "SQL"], variants: [{ id: V1, text: "x", label: "  " }] },
     ]);
-    expect(parsed.tags).toEqual(["sql"]);
+    expect(parsed.tags).toEqual(["SQL"]); // alias map: canonical spelling
     expect(parsed.variants[0].label).toBe(null);
   });
 });

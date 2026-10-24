@@ -7,6 +7,7 @@ import { useCallback, useRef, useState, useTransition, type ReactNode } from "re
 import { DegreesEditor, EntryFields, PaperFields, type Update } from "@/components/editor/forms";
 import { AddButton, Field, IconButton, ListInput, TextArea, TextInput, TrashIcon } from "@/components/editor/fields";
 import { SaveIndicator } from "@/components/editor/SaveIndicator";
+import { TagInput } from "@/components/editor/TagInput";
 import { DragHandle, moveItem, SortableList, type DragHandleProps } from "@/components/editor/SortableList";
 import { useAutosave, type AutosaveAdapter } from "@/components/editor/useAutosave";
 import { itemTitle } from "@/lib/library/display";
@@ -32,7 +33,7 @@ const libraryAutosave: AutosaveAdapter<ItemDoc, ItemPatch> = {
 
 const LABEL_SUGGESTIONS = ["short", "detailed", "technical", "leadership", "impact"];
 
-export function LibraryItemEditor({ item }: { item: LibraryItem }) {
+export function LibraryItemEditor({ item, allTags }: { item: LibraryItem; allTags: string[] }) {
   const router = useRouter();
   const [initial] = useState<ItemDoc>(() => ({ fields: item.fields, tags: item.tags, bullets: item.bullets }));
   const [doc, setDoc] = useState(initial);
@@ -50,6 +51,9 @@ export function LibraryItemEditor({ item }: { item: LibraryItem }) {
     },
     [schedule],
   );
+
+  // Tags across the library, plus any added in this editor since it loaded.
+  const tagSuggestions = mergeTags(allTags, doc.tags, ...doc.bullets.map((b) => b.tags));
 
   // The kind never changes, so pairing it with the current fields is safe.
   const data = { kind: item.kind, fields: doc.fields } as LibraryItemData;
@@ -95,11 +99,12 @@ export function LibraryItemEditor({ item }: { item: LibraryItem }) {
           <FieldsForm data={data} update={(recipe) => update((d) => recipe(d.fields))} />
         </Card>
 
-        <Card title="Tags" hint="Comma-separated. Used to filter the library.">
-          <ListInput
+        <Card title="Tags" hint="What kind of role or project this is. Press Enter or comma to add; suggestions come from your other tags.">
+          <TagInput
             aria-label="Item tags"
-            placeholder="Backend, Python, Leadership…"
+            placeholder="Backend, Full-stack, Volunteer…"
             value={doc.tags}
+            suggestions={tagSuggestions}
             onChange={(tags) => update((d) => void (d.tags = tags))}
           />
         </Card>
@@ -109,7 +114,11 @@ export function LibraryItemEditor({ item }: { item: LibraryItem }) {
             title="Bullet pool"
             hint="Keep every bullet you might use here; each resume picks the ones it needs. Variants are alternative wordings of the same bullet."
           >
-            <BulletPool bullets={doc.bullets} update={(recipe) => update((d) => recipe(d.bullets))} />
+            <BulletPool
+              bullets={doc.bullets}
+              tagSuggestions={tagSuggestions}
+              update={(recipe) => update((d) => recipe(d.bullets))}
+            />
           </Card>
         )}
       </main>
@@ -196,7 +205,15 @@ function FieldsForm({ data, update }: { data: LibraryItemData; update: Update<Li
   }
 }
 
-function BulletPool({ bullets, update }: { bullets: LibraryBullet[]; update: Update<LibraryBullet[]> }) {
+function BulletPool({
+  bullets,
+  tagSuggestions,
+  update,
+}: {
+  bullets: LibraryBullet[];
+  tagSuggestions: string[];
+  update: Update<LibraryBullet[]>;
+}) {
   return (
     <div className="space-y-2">
       {bullets.length === 0 && <p className="text-sm text-zinc-500">No bullets yet.</p>}
@@ -208,6 +225,7 @@ function BulletPool({ bullets, update }: { bullets: LibraryBullet[]; update: Upd
           <BulletCard
             bullet={bullet}
             index={i}
+            tagSuggestions={tagSuggestions}
             handle={handle}
             update={(recipe) => update((b) => recipe(b[i]))}
             onDelete={() => update((b) => void b.splice(i, 1))}
@@ -222,12 +240,14 @@ function BulletPool({ bullets, update }: { bullets: LibraryBullet[]; update: Upd
 function BulletCard({
   bullet,
   index,
+  tagSuggestions,
   handle,
   update,
   onDelete,
 }: {
   bullet: LibraryBullet;
   index: number;
+  tagSuggestions: string[];
   handle: DragHandleProps;
   update: Update<LibraryBullet>;
   onDelete: () => void;
@@ -271,11 +291,12 @@ function BulletCard({
           ))}
           <div className="flex items-center gap-2">
             <AddButton onClick={() => update((b) => void b.variants.push(newVariant()))}>Variant</AddButton>
-            <ListInput
+            <TagInput
+              size="sm"
               aria-label={`Bullet ${index + 1} tags`}
-              placeholder="Bullet tags (comma-separated)"
-              className="!py-1 !text-xs"
+              placeholder="Bullet tags: tech used, skill shown…"
               value={bullet.tags}
+              suggestions={tagSuggestions}
               onChange={(tags) => update((b) => void (b.tags = tags))}
             />
           </div>
@@ -292,4 +313,10 @@ function BulletCard({
       </div>
     </div>
   );
+}
+
+/** Distinct tags (ignoring case), keeping the order of the first list. */
+function mergeTags(...lists: string[][]): string[] {
+  const seen = new Set<string>();
+  return lists.flat().filter((t) => !seen.has(t.toLowerCase()) && seen.add(t.toLowerCase()));
 }

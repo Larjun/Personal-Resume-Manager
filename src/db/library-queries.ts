@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { storedPool } from "@/lib/library/pool";
 import { LIBRARY_FIELDS_SCHEMAS, LibraryKindSchema, type LibraryItemData, type VariantSource } from "@/lib/library/schema";
 import type { DbOrTx } from "./resume-links";
@@ -20,6 +20,20 @@ export type LibraryItem = LibraryItemData & {
   createdAt: Date;
   updatedAt: Date;
 };
+
+/** Every tag the user has used on items or bullets, most used first (for tag autocomplete). */
+export async function loadLibraryTags(db: DbOrTx, userId: string): Promise<string[]> {
+  const rows = await db.execute<{ tag: string }>(sql`
+    select tag from (
+      select unnest(${libraryItems.tags}) as tag from ${libraryItems} where ${libraryItems.userId} = ${userId}
+      union all
+      select unnest(${libraryBullets.tags}) from ${libraryBullets} where ${libraryBullets.userId} = ${userId}
+    ) t
+    group by tag
+    order by count(*) desc, lower(tag)
+  `);
+  return rows.map((r) => r.tag);
+}
 
 /** Items with their pools and usage counts: all of the user's, or only those in `itemIds`. */
 export async function loadLibraryItems(db: DbOrTx, userId: string, itemIds?: string[]): Promise<LibraryItem[]> {

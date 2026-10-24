@@ -78,6 +78,20 @@ function units(content: ResumeContent): Unit[] {
   return out;
 }
 
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/** One line for the editor after "Import into library". */
+export function importSummary({ created, linked, alreadyLinked }: ImportPlan["counts"]): string {
+  const parts = [
+    created > 0 && `added ${plural(created, "new item", "new items")}`,
+    linked > 0 && `linked ${plural(linked, "item", "items")} to matching library items`,
+    alreadyLinked > 0 && `${plural(alreadyLinked, "item was", "items were")} already in your library`,
+  ].filter(Boolean) as string[];
+  if (parts.length === 0) return "Nothing to import: this resume has no items to add.";
+  const text = parts.join(", ");
+  return `${text[0].toUpperCase()}${text.slice(1)}.`;
+}
+
 export function planResumeImport(
   input: ResumeContent,
   library: ExistingItem[],

@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import { AddFromLibraryDrawer } from "@/components/library/AddFromLibraryDrawer";
 import { addLibraryItems } from "@/lib/library/copy";
+import { importSummary } from "@/lib/library/import";
+import { importResumeToLibrary } from "@/server/library-actions";
 import { newEntriesSection, newSection } from "@/lib/resume/factories";
 import { DATE_FORMAT_LABEL, DATE_FORMATS, type DateFormat } from "@/lib/resume/dates";
 import { PAGE_SIZES, type Section } from "@/lib/resume/schema";
@@ -36,6 +38,37 @@ export function Editor({
   // The section whose "From library" panel is open.
   const [librarySectionId, setLibrarySectionId] = useState<string | null>(null);
   const closeLibrary = useCallback(() => setLibrarySectionId(null), []);
+  const [importing, setImporting] = useState(false);
+  const [importMessage, setImportMessage] = useState<{ text: string; ok: boolean } | null>(null);
+
+  const runImport = async () => {
+    if (
+      !confirm(
+        "Copy this resume's experience, projects, education, skills and summary into your library?\n\n" +
+          "Items that match something already in your library are linked to it instead of duplicated.",
+      )
+    ) {
+      return;
+    }
+    setImporting(true);
+    setImportMessage(null);
+    try {
+      // The import saves the resume on the server, so send pending edits first.
+      if (!(await flush())) {
+        setImportMessage({ text: "Couldn't save your latest changes, so nothing was imported. Try again.", ok: false });
+        return;
+      }
+      const { counts, content } = await importResumeToLibrary(id);
+      // Adopt the linked content (the editor stays locked meanwhile, so nothing typed is lost).
+      update((d) => void (d.content = content));
+      setImportMessage({ text: importSummary(counts), ok: true });
+    } catch (err) {
+      console.error("Import into library failed", err);
+      setImportMessage({ text: "Import failed. Nothing was changed; try again.", ok: false });
+    } finally {
+      setImporting(false);
+    }
+  };
   const librarySection = sectionsById(doc.content.sections, librarySectionId);
 
   const update: Update<EditorDoc> = useCallback(
@@ -110,6 +143,14 @@ export function Editor({
           ))}
         </div>
         <button
+          onClick={() => void runImport()}
+          disabled={importing}
+          title="Create library items from this resume and link its entries to them"
+          className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:border-zinc-400 hover:bg-zinc-50 disabled:opacity-50"
+        >
+          {importing ? "Importing…" : "Import into library"}
+        </button>
+        <button
           onClick={async () => {
             // Open the tab synchronously (popup blockers), then point it at the
             // print view once every pending edit is saved, so it never prints stale content.
@@ -131,8 +172,32 @@ export function Editor({
         </button>
       </header>
 
+      {importMessage && (
+        <div
+          role="status"
+          className={`flex shrink-0 items-center gap-3 border-b px-4 py-1.5 text-xs ${
+            importMessage.ok ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-red-200 bg-red-50 text-red-800"
+          }`}
+        >
+          <span className="flex-1">{importMessage.text}</span>
+          {importMessage.ok && (
+            <Link href="/library" onClick={() => void flush()} className="font-medium underline-offset-2 hover:underline">
+              Open library
+            </Link>
+          )}
+          <button onClick={() => setImportMessage(null)} aria-label="Dismiss" className="px-1 text-base leading-none opacity-60 hover:opacity-100">
+            ×
+          </button>
+        </div>
+      )}
+
       <div className="flex min-h-0 flex-1">
-        <section aria-label="Editor" className="w-[44%] min-w-[420px] overflow-y-auto border-r border-zinc-200 bg-zinc-50 p-4">
+        <section
+          aria-label="Editor"
+          aria-busy={importing}
+          inert={importing}
+          className={`w-[44%] min-w-[420px] overflow-y-auto border-r border-zinc-200 bg-zinc-50 p-4 ${importing ? "opacity-60" : ""}`}
+        >
           <LibrarySyncProvider value={sync}>
             <DateFormatContext value={doc.content.settings.dateFormat}>
               <div className="space-y-3">
