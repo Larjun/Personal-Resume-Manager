@@ -8,20 +8,29 @@ A web app for building and maintaining resumes. You edit structured content on t
 
 The work happens in stages. Keep the data model structured so that later stages can build on it.
 
-- **Stage 1 (current): non-AI resume editor**
+- **Stage 1 (done): non-AI resume editor**
   - **1a: list and data model.** Create, rename, duplicate, delete and open resumes. Drizzle schema on Supabase Postgres. Seed script that parses `seed/resume.pdf`.
   - **1b: editor.** Structured forms for each section type. Sections, entries, bullets and contacts can be reordered with dnd-kit. Section headings can be renamed. Section types: header (name, email, phone, location as plain text, plus links with a URL), summary, entries (experience/projects), publications (title, authors, venue, date, link, optional bullets), education, skills. Entries and papers collapse (closed by default) and have an include checkbox (`visible`): unchecked items stay in the editor but are left out of the resume, and a section whose items are all unchecked disappears. A4/Letter choice per resume. Debounced autosave.
   - **1c: pagination.** Measure blocks off-screen and place them onto fixed-size pages with keep-together rules. Page numbers and page count appear in the preview UI.
   - **1d: export.** A print view with `@page { size; margin: 0 }` and one fixed-size div per page. Text stays selectable.
-- **Stage 2: master library.** A reusable library of experiences, projects and bullets. Resumes pick from and reference that library. This is why every entity has a stable `id`.
-- **Stage 3: AI features.** Tailoring, rewriting, suggestions and similar. Stage 1 contains **no** AI code.
+- **Later stages** are specified in `docs/stage-prompts.md`, one prompt per stage:
+  - 1.5 auth (Supabase) and account settings
+  - 2 master library: items, bullet pool, variants, tags. This is why every entity has a stable `id`.
+  - 3 AI resume parsing and usage logging
+  - 3.5 usage dashboard and limits
+  - 4 AI bullet writing
+  - 5 job postings and tailored resumes
+  - 6 grade and revise
+  - 7 resume collection, versions and PDF downloads
+
+  No AI code exists before Stage 3.
 
 Work proceeds milestone by milestone. Stop after each one so the user can test and commit.
 
 ## Stack
 
 - Next.js 16 (App Router, `cacheComponents` on), React 19, TypeScript, Tailwind v4
-- Postgres hosted on **Supabase**, accessed through **Drizzle ORM** and the `postgres` (postgres-js) driver. The connection string is `DATABASE_URL` in `.env.local` (see `.env.example`). Supabase Auth is planned but not wired up yet.
+- Postgres hosted on **Supabase**, accessed through **Drizzle ORM** and the `postgres` (postgres-js) driver. The connection string is `DATABASE_URL` in `.env.local` (see `.env.example`). Auth: see Stage 1.5 in `docs/stage-prompts.md` (Supabase Auth).
 - zod v4 for content validation
 - dnd-kit for reordering, immer for nested state updates
 - Self-hosted fonts from `@fontsource/spectral` (headings and name) and `@fontsource/arimo` (body; it has the same metrics as Arial)
@@ -33,7 +42,7 @@ Work proceeds milestone by milestone. Stop after each one so the user can test a
 npm run dev           # dev server
 npm run db:generate   # generate a migration after editing src/db/schema.ts
 npm run db:migrate    # apply migrations to the DATABASE_URL database
-npm run seed          # parse seed/resume.pdf and upsert the seed resume
+npm run seed          # create/find the dev user (SEED_USER_*), upsert the seed resume it owns
 npm test              # vitest
 npm run lint
 npx tsc --noEmit      # typecheck
@@ -42,9 +51,14 @@ npx tsc --noEmit      # typecheck
 ## Layout
 
 ```
-src/app/                    routes: / (list), /resumes/[id] (editor), /resumes/[id]/print
+src/app/                    routes: / (list), /resumes/[id] (editor), /resumes/[id]/print, (auth)/login
+src/proxy.ts                session refresh + optimistic redirect to /login (Next 16's middleware)
+src/server/auth.ts          getSessionUser() / requireUser(): the real access gate
 src/server/resumes.ts       read queries (NOT "use server", so they aren't exposed as actions)
 src/server/actions.ts       "use server" mutations (all input validated with zod)
+src/server/auth-actions.ts  "use server" sign-in / sign-out
+src/lib/supabase/           server (cookies), admin (service role, server-only) clients
+src/lib/auth/redirect.ts    safeNextPath() for post-login redirects, public route list
 src/db/                     drizzle schema + client
 src/lib/resume/             content zod schema (source of truth), factories, helpers
 src/lib/page/sizes.ts       page geometry (A4/Letter px @96dpi, margins): the ONLY place for it
@@ -68,7 +82,11 @@ drizzle/                    generated SQL migrations (committed)
 - **Export:** `/resumes/[id]/print` renders the same `usePagination` and `PageView` pages, with `@page { size; margin: 0 }` and `break-after: page`. `?autoprint=1` opens the print dialog once pages are laid out. The editor's Print button waits for `flush()` (pending autosaves) before opening it. Template symbols (bullets, arrows) are drawn with CSS/SVG, never font glyphs, so the PDF embeds only the self-hosted fonts.
 - **Page geometry** (page size, margins, content box) comes from `src/lib/page/sizes.ts`. Don't hard-code it anywhere else.
 - **Data reads:** server components that read the DB must sit inside `<Suspense>` (a `cacheComponents` requirement). Mutations go through server actions in `src/server/`.
-- **Database access** goes through Drizzle on the server only. The `resumes` table has RLS turned on with no policies, so Supabase's public Data API (the anon and authenticated keys) can't touch it. Our server connects as the `postgres` role, which bypasses RLS, so **access control lives in server code**. Once auth lands, every query must filter by `user_id`.
+- **Database access** goes through Drizzle on the server only. User-data tables have RLS turned on with no policies, so Supabase's public Data API (the anon and authenticated keys) can't touch them. Our server connects as the `postgres` role, which bypasses RLS, so **access control lives in server code**.
+- **Every query filters by `user_id`.** Every read function in `src/server/*.ts`, every server action and every route handler starts with `const user = await requireUser()` and scopes its query to `user.id` (`and(eq(table.id, id), eq(table.userId, user.id))`). Another user's id must behave exactly like a missing one (return `null` → `notFound()`). Pages never query tables directly. `src/proxy.ts` only does an optimistic redirect; never rely on it for access control. It redirects **GET/HEAD navigations only**: a redirect in reply to a server action POST isn't an action response, and the client throws "An unexpected response was received from the server". Actions get their redirect from `requireUser()` instead.
+- **User-data tables** follow the `resumes` pattern: `user_id` (or `id` for `profiles`) references `authUsers` from `drizzle-orm/supabase` with `onDelete: "cascade"`, gets an index, and `.enableRLS()`. Deleting an account in Supabase Auth deletes all of its rows.
+- **Auth in render:** `getSessionUser()` calls `await connection()` before supabase-js runs (it reads `Date.now()`, which `cacheComponents` forbids while prerendering), and it uses `getUser()` so deleted accounts are rejected immediately. Components that call it must sit inside `<Suspense>`. Under streaming, `notFound()` renders the not-found UI with HTTP 200; that's expected.
+- **Service-role key** (`SUPABASE_SERVICE_ROLE_KEY`) is used only via `src/lib/supabase/admin.ts` (`server-only`) and the seed script. Never `NEXT_PUBLIC_`.
 - **Schema changes** go through `src/db/schema.ts`, then `npm run db:generate` and `npm run db:migrate`. Never edit tables in the Supabase dashboard. Drizzle only manages the `public` schema; Supabase owns `auth`, `storage` and the rest.
 - **Ids:** resume ids are UUIDs. Validate them with `ResumeIdSchema` before querying, because Postgres throws on a malformed UUID.
 - **Pure logic** (`paginate`, parsers, schema helpers) gets vitest tests next to the code as `*.test.ts`.

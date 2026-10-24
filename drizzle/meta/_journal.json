@@ -8,6 +8,20 @@
       "when": 1792774506663,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792813926611,
+      "tag": "0001_auth_owner",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792814092490,
+      "tag": "0002_resumes_user_id_not_null",
+      "breakpoints": true
     }
   ]
 }

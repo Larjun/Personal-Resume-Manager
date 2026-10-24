@@ -1,0 +1,14 @@
+// Public Supabase settings, safe for both server and browser bundles.
+// (NEXT_PUBLIC_* vars must be read with literal property access to be inlined.)
+
+export function supabaseUrl(): string {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!url) throw new Error("NEXT_PUBLIC_SUPABASE_URL is not set. See .env.example.");
+  return url;
+}
+
+export function supabasePublishableKey(): string {
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!key) throw new Error("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY is not set. See .env.example.");
+  return key;
+}

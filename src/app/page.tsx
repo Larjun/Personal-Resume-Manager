@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { listResumes } from "@/server/resumes";
+import { AccountMenu } from "@/components/auth/AccountMenu";
 import { CreateResumeForm } from "@/components/list/CreateResumeForm";
 import { ResumeRowItem } from "@/components/list/ResumeRowItem";
 
@@ -11,6 +12,9 @@ export default function Home() {
           <h1 className="text-2xl font-semibold tracking-tight">Resumes</h1>
           <p className="text-sm text-zinc-500">Create, edit and export your resumes.</p>
         </div>
+        <Suspense>
+          <AccountMenu />
+        </Suspense>
       </header>
       <CreateResumeForm />
       <Suspense fallback={<p className="mt-6 text-sm text-zinc-500">Loading resumes…</p>}>
