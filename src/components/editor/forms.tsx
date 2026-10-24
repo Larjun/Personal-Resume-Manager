@@ -15,6 +15,8 @@ import {
   TextInput,
   TrashIcon,
 } from "./fields";
+import type { Copy } from "@/lib/library/sync";
+import { SyncBadge, UpdateLibraryControl } from "./librarySync";
 import { DragHandle, moveItem, SortableList, type DragHandleProps } from "./SortableList";
 
 /** Applies an immer recipe to one piece of the resume. */
@@ -167,12 +169,15 @@ function SectionBody({ section, update }: { section: Section; update: Update<Sec
   switch (section.type) {
     case "summary":
       return (
-        <TextArea
-          aria-label="Summary"
-          rows={3}
-          value={section.text}
-          onChange={(v) => narrow<"summary">()((s) => void (s.text = v))}
-        />
+        <div className="space-y-1.5">
+          <SyncBadge copy={section} />
+          <TextArea
+            aria-label="Summary"
+            rows={3}
+            value={section.text}
+            onChange={(v) => narrow<"summary">()((s) => void (s.text = v))}
+          />
+        </div>
       );
     case "entries":
       return <EntriesForm section={section} update={narrow<"entries">()} />;
@@ -226,13 +231,14 @@ function EntryCard({
       meta={formatRange(entry.dates, format)}
       hasIssues={dateRangeIssues(entry.dates, format).length > 0}
       startOpen={!entry.title && !entry.org}
+      badge={<SyncBadge copy={entry} />}
       visible={entry.visible}
       onVisibleChange={(v) => update((e) => void (e.visible = v))}
       onDelete={onDelete}
       handle={handle}
     >
       <EntryFields value={entry} update={update} />
-      <BulletsEditor bullets={entry.bullets} update={(recipe) => update((e) => recipe(e.bullets))} />
+      <BulletsEditor copy={entry} bullets={entry.bullets} update={(recipe) => update((e) => recipe(e.bullets))} />
     </CollapsibleItem>
   );
 }
@@ -306,6 +312,7 @@ function PaperCard({
       meta={formatYearMonth(paper.date, format)}
       hasIssues={singleDateIssues(paper.date, format).length > 0}
       startOpen={!paper.title}
+      badge={<SyncBadge copy={paper} />}
       visible={paper.visible}
       onVisibleChange={(v) => update((p) => void (p.visible = v))}
       onDelete={onDelete}
@@ -313,6 +320,7 @@ function PaperCard({
     >
       <PaperFields value={paper} update={update} />
       <BulletsEditor
+        copy={paper}
         label="Bullets (optional)"
         bullets={paper.bullets}
         update={(recipe) => update((p) => recipe(p.bullets))}
@@ -370,6 +378,7 @@ export function PaperFields({ value, update }: { value: PaperCore; update: Updat
 function CollapsibleItem({
   summary,
   meta,
+  badge,
   hasIssues = false,
   startOpen,
   visible,
@@ -380,6 +389,8 @@ function CollapsibleItem({
 }: {
   summary: string;
   meta: string;
+  /** Library sync state, shown on the collapsed row. */
+  badge?: ReactNode;
   /** Shows a warning marker on the collapsed row (e.g. inconsistent dates). */
   hasIssues?: boolean;
   /** Existing items start collapsed; a freshly added (blank) one opens for editing. */
@@ -414,6 +425,7 @@ function CollapsibleItem({
           </span>
           <span className={`truncate text-sm font-medium ${visible ? "" : "text-zinc-400 line-through"}`}>{summary}</span>
           <span className="ml-auto flex shrink-0 items-center gap-1.5 pl-2 text-xs text-zinc-500">
+            {badge}
             {meta}
             {hasIssues && (
               <span className="text-amber-600" title="Date needs attention" aria-label="Date needs attention">
@@ -438,10 +450,13 @@ function CollapsibleItem({
 }
 
 function BulletsEditor({
+  copy,
   bullets,
   update,
   label = "Bullets",
 }: {
+  /** The entry or paper the bullets belong to (for library sync). */
+  copy: Copy;
   bullets: Bullet[];
   update: Update<Bullet[]>;
   label?: string;
@@ -454,12 +469,27 @@ function BulletsEditor({
         className="space-y-1.5"
         onMove={(from, to) => update((b) => moveItem(b, from, to))}
         renderItem={(bullet, i, handle) => (
-          <div className="flex items-start gap-1">
-            <DragHandle handle={handle} label="Drag bullet" />
-            <TextArea aria-label={`Bullet ${i + 1}`} value={bullet.text} onChange={(v) => update((b) => void (b[i].text = v))} />
-            <IconButton label="Delete bullet" tone="danger" onClick={() => update((b) => void b.splice(i, 1))}>
-              <TrashIcon />
-            </IconButton>
+          <div>
+            <div className="flex items-start gap-1">
+              <DragHandle handle={handle} label="Drag bullet" />
+              <TextArea aria-label={`Bullet ${i + 1}`} value={bullet.text} onChange={(v) => update((b) => void (b[i].text = v))} />
+              <IconButton label="Delete bullet" tone="danger" onClick={() => update((b) => void b.splice(i, 1))}>
+                <TrashIcon />
+              </IconButton>
+            </div>
+            <UpdateLibraryControl
+              copy={copy}
+              bullet={bullet}
+              onPushed={(variantId, text) =>
+                update((b) => {
+                  // Find by id: the list may have been reordered while the request ran.
+                  const target = b.find((x) => x.id === bullet.id);
+                  if (!target) return;
+                  target.sourceVariantId = variantId;
+                  target.sourceText = text;
+                })
+              }
+            />
           </div>
         )}
       />
@@ -522,6 +552,7 @@ function SchoolCard({
             <TextInput value={school.location} onChange={(v) => update((s) => void (s.location = v))} />
           </Field>
         </div>
+        <SyncBadge copy={school} />
         <IconButton label="Delete school" tone="danger" onClick={onDelete}>
           <TrashIcon />
         </IconButton>
@@ -592,6 +623,7 @@ function SkillsForm({ section, update }: { section: SectionOf<"skills">; update:
               value={row.items}
               onChange={(v) => update((s) => void (s.rows[i].items = v))}
             />
+            <SyncBadge copy={row} />
             <IconButton label="Delete row" tone="danger" onClick={() => update((s) => void s.rows.splice(i, 1))}>
               <TrashIcon />
             </IconButton>

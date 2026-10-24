@@ -18,6 +18,16 @@ export async function listLibraryItems(): Promise<LibraryItem[]> {
 export async function getLibraryItem(id: string): Promise<LibraryItem | null> {
   const user = await requireUser();
   if (!LibraryItemIdSchema.safeParse(id).success) return null;
-  const [item] = await loadLibraryItems(db, user.id, id);
+  const [item] = await loadLibraryItems(db, user.id, [id]);
   return item ?? null;
+}
+
+/**
+ * The library items a resume copied from, for its sync badges. Ids that are
+ * malformed, deleted or someone else's are simply absent from the result.
+ */
+export async function getLibrarySources(ids: string[]): Promise<LibraryItem[]> {
+  const user = await requireUser();
+  const valid = ids.filter((id) => LibraryItemIdSchema.safeParse(id).success);
+  return loadLibraryItems(db, user.id, valid);
 }

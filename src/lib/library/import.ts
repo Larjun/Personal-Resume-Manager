@@ -132,11 +132,11 @@ export function planResumeImport(
     // Link each bullet to a pool bullet with the same text, or add it to the pool.
     for (const b of texts) {
       const text = b.text.trim();
-      let match: { bulletId: string; variantId: string } | undefined;
+      let match: { bulletId: string; variantId: string; text: string } | undefined;
       for (const pb of target.bullets) {
         const v = pb.variants.find((x) => norm(x.text) === norm(text));
         if (v) {
-          match = { bulletId: pb.id, variantId: v.id };
+          match = { bulletId: pb.id, variantId: v.id, text: v.text };
           break;
         }
       }
@@ -149,10 +149,13 @@ export function planResumeImport(
           entry.bullets.push(nb);
         }
         touched.add(target.id);
-        match = { bulletId: nb.id, variantId: nb.variants[0].id };
+        match = { bulletId: nb.id, variantId: nb.variants[0].id, text };
       }
+      // Matching ignores spacing; take the library's exact wording so the bullet doesn't read as edited.
+      b.text = match.text;
       b.sourceBulletId = match.bulletId;
       b.sourceVariantId = match.variantId;
+      b.sourceText = match.text;
     }
     if (!existingIds.has(target.id)) touched.add(target.id);
     item.sourceItemId = target.id;

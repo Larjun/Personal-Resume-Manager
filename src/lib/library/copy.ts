@@ -83,7 +83,9 @@ export function addLibraryItems(
     const source = { sourceItemId: item.id, sourceItemUpdatedAt: item.updatedAt.toISOString() };
     const bullets: Bullet[] = choices.flatMap(({ bulletId, variantId }) => {
       const variant = item.bullets.find((b) => b.id === bulletId)?.variants.find((v) => v.id === variantId);
-      return variant ? [{ id: newId(), text: variant.text, sourceBulletId: bulletId, sourceVariantId: variantId }] : [];
+      return variant
+        ? [{ id: newId(), text: variant.text, sourceBulletId: bulletId, sourceVariantId: variantId, sourceText: variant.text }]
+        : [];
     });
     const fields = structuredClone(item.fields);
 

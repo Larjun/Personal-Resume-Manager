@@ -40,7 +40,7 @@ describe("ResumeContentSchema migration", () => {
       sections: [],
     };
     expect(ResumeContentSchema.parse(v1)).toEqual({
-      version: 5,
+      version: 6,
       settings: { dateFormat: "long" },
       header: {
         name: "Ada",
@@ -77,7 +77,7 @@ describe("ResumeContentSchema migration", () => {
       ],
     };
     const out = ResumeContentSchema.parse(v2);
-    expect(out.version).toBe(5);
+    expect(out.version).toBe(6);
     expect(out.settings.dateFormat).toBe("short");
     const [exp, edu, pubs] = out.sections;
     expect(exp.type === "entries" && exp.entries.map((e) => e.dates)).toEqual([
@@ -124,17 +124,32 @@ describe("ResumeContentSchema migration", () => {
       sections: [entries("a", "Experience"), entries("b", "Personal Projects"), entries("c", "Leadership")],
     };
     const out = ResumeContentSchema.parse(v4);
-    expect(out.version).toBe(5);
+    expect(out.version).toBe(6);
     expect(out.sections.map((s) => s.type === "entries" && s.entryKind)).toEqual(["experience", "project", "experience"]);
   });
 
-  it("leaves current-version content untouched", () => {
+  it("upgrades v5 bullets: linked ones remember their text as sourceText", () => {
+    const bullet = (id: string, text: string, sourceBulletId: string | null) => ({ id, text, sourceBulletId, sourceVariantId: sourceBulletId && "v" });
+    const entry = { id: "e", title: "", org: "", location: "", visible: true, dates: { start: null, end: null }, sourceItemId: null, sourceItemUpdatedAt: null };
     const v5 = {
       version: 5,
+      settings: { dateFormat: "long" },
+      header: { name: "", email: "", location: "", phone: "", links: [] },
+      sections: [
+        { id: "s", heading: "Experience", type: "entries", entryKind: "experience", entries: [{ ...entry, bullets: [bullet("a", "Linked", "lb"), bullet("b", "Own", null)] }] },
+      ],
+    };
+    const [s] = ResumeContentSchema.parse(v5).sections;
+    expect(s.type === "entries" && s.entries[0].bullets.map((b) => b.sourceText)).toEqual(["Linked", null]);
+  });
+
+  it("leaves current-version content untouched", () => {
+    const v6 = {
+      version: 6,
       settings: { dateFormat: "numeric" },
       header: { name: "", email: "", location: "", phone: "", links: [] },
       sections: [{ id: "s", heading: "Things I Built", type: "entries", entryKind: "project", entries: [] }],
     };
-    expect(ResumeContentSchema.parse(v5)).toEqual(v5);
+    expect(ResumeContentSchema.parse(v6)).toEqual(v6);
   });
 });

@@ -114,6 +114,20 @@ export function migrateContent(input: unknown): unknown {
     );
     data = { ...data, version: 5, sections };
   }
+
+  // v5 → v6: linked bullets remember the library text they were copied from.
+  // Assume they're unedited (true for everything linked so far: imports matched it).
+  if (data.version === 5) {
+    type B = Record<string, unknown> & { text?: string; sourceBulletId?: string | null };
+    type Sec = Record<string, unknown> & { entries?: { bullets: B[] }[]; papers?: { bullets: B[] }[] };
+    const withSourceText = (b: B) => ({ ...b, sourceText: b.sourceBulletId ? (b.text ?? "") : null });
+    const sections = ((data.sections ?? []) as Sec[]).map((s) => ({
+      ...s,
+      ...(s.entries && { entries: s.entries.map((e) => ({ ...e, bullets: e.bullets.map(withSourceText) })) }),
+      ...(s.papers && { papers: s.papers.map((p) => ({ ...p, bullets: p.bullets.map(withSourceText) })) }),
+    }));
+    data = { ...data, version: 6, sections };
+  }
   return data;
 }
 

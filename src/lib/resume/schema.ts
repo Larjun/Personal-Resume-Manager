@@ -58,6 +58,12 @@ export const BulletSchema = z.object({
   text: z.string(),
   sourceBulletId: Id.nullable(),
   sourceVariantId: Id.nullable(),
+  /**
+   * The library wording's text when it was copied (or last pulled / pushed).
+   * text ≠ sourceText: edited in this resume. Library text ≠ sourceText: the
+   * library wording changed. Resume edits never reach the library on their own.
+   */
+  sourceText: z.string().nullable(),
 });
 
 export const EntrySchema = z.object({
@@ -153,7 +159,7 @@ export const SectionSchema = z.discriminatedUnion("type", [
   SkillsSectionSchema,
 ]);
 
-export const CONTENT_VERSION = 5;
+export const CONTENT_VERSION = 6;
 
 const CurrentContentSchema = z.object({
   version: z.literal(CONTENT_VERSION),

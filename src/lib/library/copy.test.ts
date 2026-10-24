@@ -62,8 +62,8 @@ describe("addLibraryItems", () => {
       location: "Remote",
       dates: { start: { year: 2023, month: 8 }, end: "present" },
       bullets: [
-        { id: "new-1", text: "Led a team", sourceBulletId: "b3", sourceVariantId: "b3v1" },
-        { id: "new-2", text: "Built a Flask API", sourceBulletId: "b1", sourceVariantId: "b1v2" },
+        { id: "new-1", text: "Led a team", sourceBulletId: "b3", sourceVariantId: "b3v1", sourceText: "Led a team" },
+        { id: "new-2", text: "Built a Flask API", sourceBulletId: "b1", sourceVariantId: "b1v2", sourceText: "Built a Flask API" },
       ],
       visible: true,
       sourceItemId: "item-job",

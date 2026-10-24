@@ -11,13 +11,24 @@ import { DATE_FORMAT_LABEL, DATE_FORMATS, type DateFormat } from "@/lib/resume/d
 import { PAGE_SIZES, type Section } from "@/lib/resume/schema";
 import { usePagination } from "@/lib/pagination/usePagination";
 import { DateFormatContext } from "./dateFields";
+import type { LibraryItem } from "@/db/library-queries";
 import { HeaderForm, SectionCard, type Update } from "./forms";
+import { LibrarySyncProvider, useLibrarySources } from "./librarySync";
 import { moveItem, SortableList } from "./SortableList";
 import { resumeAutosave, useAutosave, type EditorDoc } from "./useAutosave";
 import { Preview } from "./Preview";
 import { SaveIndicator } from "./SaveIndicator";
 
-export function Editor({ id, initial }: { id: string; initial: EditorDoc }) {
+export function Editor({
+  id,
+  initial,
+  librarySources,
+}: {
+  id: string;
+  initial: EditorDoc;
+  /** The library items this resume copied from, as loaded with the page. */
+  librarySources: LibraryItem[];
+}) {
   const router = useRouter();
   const [doc, setDoc] = useState(initial);
   const docRef = useRef(initial);
@@ -38,6 +49,7 @@ export function Editor({ id, initial }: { id: string; initial: EditorDoc }) {
     [schedule],
   );
 
+  const sync = useLibrarySources(doc.content, librarySources, initial.content);
   const sections = doc.content.sections;
   const pagination = usePagination(doc.content, doc.pageSize);
   const pageCount = pagination.pages?.length;
@@ -121,26 +133,28 @@ export function Editor({ id, initial }: { id: string; initial: EditorDoc }) {
 
       <div className="flex min-h-0 flex-1">
         <section aria-label="Editor" className="w-[44%] min-w-[420px] overflow-y-auto border-r border-zinc-200 bg-zinc-50 p-4">
-          <DateFormatContext value={doc.content.settings.dateFormat}>
-            <div className="space-y-3">
-              <HeaderForm header={doc.content.header} update={(recipe) => update((d) => recipe(d.content.header))} />
-              <SortableList
-                items={sections}
-                className="space-y-3"
-                onMove={(from, to) => update((d) => moveItem(d.content.sections, from, to))}
-                renderItem={(section, i, handle) => (
-                  <SectionCard
-                    section={section}
-                    handle={handle}
-                    update={(recipe) => update((d) => recipe(d.content.sections[i]))}
-                    onDelete={() => update((d) => void d.content.sections.splice(i, 1))}
-                    onAddFromLibrary={() => setLibrarySectionId(section.id)}
-                  />
-                )}
-              />
-              <AddSection onAdd={(section) => update((d) => void d.content.sections.push(section))} />
-            </div>
-          </DateFormatContext>
+          <LibrarySyncProvider value={sync}>
+            <DateFormatContext value={doc.content.settings.dateFormat}>
+              <div className="space-y-3">
+                <HeaderForm header={doc.content.header} update={(recipe) => update((d) => recipe(d.content.header))} />
+                <SortableList
+                  items={sections}
+                  className="space-y-3"
+                  onMove={(from, to) => update((d) => moveItem(d.content.sections, from, to))}
+                  renderItem={(section, i, handle) => (
+                    <SectionCard
+                      section={section}
+                      handle={handle}
+                      update={(recipe) => update((d) => recipe(d.content.sections[i]))}
+                      onDelete={() => update((d) => void d.content.sections.splice(i, 1))}
+                      onAddFromLibrary={() => setLibrarySectionId(section.id)}
+                    />
+                  )}
+                />
+                <AddSection onAdd={(section) => update((d) => void d.content.sections.push(section))} />
+              </div>
+            </DateFormatContext>
+          </LibrarySyncProvider>
         </section>
 
         <section aria-label="Preview" className="min-w-0 flex-1 overflow-y-auto bg-zinc-200/70">

@@ -21,12 +21,13 @@ export type LibraryItem = LibraryItemData & {
   updatedAt: Date;
 };
 
-/** Items with their pools and usage counts: all of the user's, or just `itemId`. */
-export async function loadLibraryItems(db: DbOrTx, userId: string, itemId?: string): Promise<LibraryItem[]> {
+/** Items with their pools and usage counts: all of the user's, or only those in `itemIds`. */
+export async function loadLibraryItems(db: DbOrTx, userId: string, itemIds?: string[]): Promise<LibraryItem[]> {
+  if (itemIds?.length === 0) return [];
   const items = await db
     .select()
     .from(libraryItems)
-    .where(and(eq(libraryItems.userId, userId), itemId ? eq(libraryItems.id, itemId) : undefined))
+    .where(and(eq(libraryItems.userId, userId), itemIds ? inArray(libraryItems.id, itemIds) : undefined))
     .orderBy(desc(libraryItems.updatedAt));
   if (items.length === 0) return [];
 
@@ -34,11 +35,11 @@ export async function loadLibraryItems(db: DbOrTx, userId: string, itemId?: stri
     db
       .select({ id: libraryBullets.id, itemId: libraryBullets.itemId, position: libraryBullets.position, tags: libraryBullets.tags })
       .from(libraryBullets)
-      .where(and(eq(libraryBullets.userId, userId), itemId ? eq(libraryBullets.itemId, itemId) : undefined)),
+      .where(and(eq(libraryBullets.userId, userId), itemIds ? inArray(libraryBullets.itemId, itemIds) : undefined)),
     db
       .select({ itemId: resumeItemLinks.itemId, n: count() })
       .from(resumeItemLinks)
-      .where(and(eq(resumeItemLinks.userId, userId), itemId ? eq(resumeItemLinks.itemId, itemId) : undefined))
+      .where(and(eq(resumeItemLinks.userId, userId), itemIds ? inArray(resumeItemLinks.itemId, itemIds) : undefined))
       .groupBy(resumeItemLinks.itemId),
   ]);
 
@@ -59,8 +60,8 @@ export async function loadLibraryItems(db: DbOrTx, userId: string, itemId?: stri
           .where(
             and(
               eq(bulletVariants.userId, userId),
-              // For one item, only its bullets' variants; for the list, all of the user's.
-              itemId ? inArray(bulletVariants.bulletId, bulletIds) : undefined,
+              // For some items, only their bullets' variants; for the whole library, all of the user's.
+              itemIds ? inArray(bulletVariants.bulletId, bulletIds) : undefined,
             ),
           );
 

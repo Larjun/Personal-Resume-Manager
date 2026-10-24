@@ -20,7 +20,7 @@ export const newLink = (text = "", url = ""): Link => ({ id: newId(), text, url 
 /** Source fields for an item that wasn't copied from the library. */
 export const NO_ITEM_SOURCE = { sourceItemId: null, sourceItemUpdatedAt: null } as const;
 
-export const NO_BULLET_SOURCE = { sourceBulletId: null, sourceVariantId: null } as const;
+export const NO_BULLET_SOURCE = { sourceBulletId: null, sourceVariantId: null, sourceText: null } as const;
 
 export const newBullet = (text = ""): Bullet => ({ id: newId(), text, ...NO_BULLET_SOURCE });
 

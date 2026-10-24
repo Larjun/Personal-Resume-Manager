@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, max } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
@@ -15,6 +15,7 @@ import {
   LIBRARY_FIELDS_SCHEMAS,
   LibraryItemIdSchema,
   LibraryKindSchema,
+  MAX_VARIANTS_PER_BULLET,
   TagsSchema,
 } from "@/lib/library/schema";
 import { newId } from "@/lib/resume/factories";
@@ -31,6 +32,13 @@ function ownItem(id: string, userId: string) {
 export async function fetchLibraryItems(): Promise<LibraryItem[]> {
   const user = await requireUser();
   return loadLibraryItems(db, user.id);
+}
+
+/** Like fetchLibraryItems, but only the items a resume copied from (its sync badges refresh with this). */
+export async function fetchLibrarySources(ids: string[]): Promise<LibraryItem[]> {
+  const user = await requireUser();
+  const valid = z.array(z.string()).max(500).parse(ids).filter((id) => LibraryItemIdSchema.safeParse(id).success);
+  return loadLibraryItems(db, user.id, valid);
 }
 
 /** Creates a blank item (with one empty bullet if the kind has a pool). Returns its id. */
@@ -114,6 +122,69 @@ export async function saveLibraryItem(
     if (contentChanged) set.updatedAt = updatedAt;
     if (Object.keys(set).length > 0) await tx.update(libraryItems).set(set).where(ownItem(item.id, user.id));
     return { updatedAt };
+  });
+}
+
+const PushBulletSchema = z.object({
+  bulletId: z.uuid(),
+  /** The wording the resume bullet came from; required to replace it. */
+  variantId: z.uuid().nullable(),
+  text: z.string().max(2000).refine((t) => t.trim().length > 0, "Bullet text is empty"),
+  mode: z.enum(["replace", "variant"]),
+});
+
+/**
+ * "Update library" on a bullet edited in a resume: replace the library wording
+ * it came from, or save the text as a new wording of that library bullet.
+ * The only way resume edits reach the library. Marks the item updated, so
+ * other resumes using a replaced wording see "Library updated".
+ * Returns the wording the resume bullet now points at.
+ */
+export async function pushBulletToLibrary(input: z.input<typeof PushBulletSchema>): Promise<{ variantId: string }> {
+  const user = await requireUser();
+  const { bulletId, variantId, text, mode } = PushBulletSchema.parse(input);
+
+  return db.transaction(async (tx) => {
+    const [bullet] = await tx
+      .select({ id: libraryBullets.id, itemId: libraryBullets.itemId })
+      .from(libraryBullets)
+      .where(and(eq(libraryBullets.id, bulletId), eq(libraryBullets.userId, user.id)))
+      .for("update");
+    if (!bullet) throw new Error("That bullet is no longer in your library.");
+
+    let id: string;
+    if (mode === "replace") {
+      if (!variantId) throw new Error("No library wording to replace.");
+      const updated = await tx
+        .update(bulletVariants)
+        .set({ text })
+        .where(and(eq(bulletVariants.id, variantId), eq(bulletVariants.bulletId, bullet.id), eq(bulletVariants.userId, user.id)))
+        .returning({ id: bulletVariants.id });
+      if (updated.length === 0) throw new Error("That wording is no longer in your library.");
+      id = variantId;
+    } else {
+      const existing = await tx
+        .select({ id: bulletVariants.id })
+        .from(bulletVariants)
+        .where(and(eq(bulletVariants.bulletId, bullet.id), eq(bulletVariants.userId, user.id)));
+      if (existing.length >= MAX_VARIANTS_PER_BULLET) {
+        throw new Error(`A bullet can have at most ${MAX_VARIANTS_PER_BULLET} wordings.`);
+      }
+      const [{ last }] = await tx
+        .select({ last: max(bulletVariants.position) })
+        .from(bulletVariants)
+        .where(eq(bulletVariants.bulletId, bullet.id));
+      id = newId();
+      await tx
+        .insert(bulletVariants)
+        .values({ id, userId: user.id, bulletId: bullet.id, position: (last ?? -1) + 1, text, label: null, source: "user" });
+    }
+
+    await tx
+      .update(libraryItems)
+      .set({ updatedAt: new Date() })
+      .where(and(eq(libraryItems.id, bullet.itemId), eq(libraryItems.userId, user.id)));
+    return { variantId: id };
   });
 }
 
