@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useActionState } from "react";
 import { signIn, type AuthFormState } from "@/server/auth-actions";
-import { Field, FormError, GoogleSignIn, QueryError, SubmitButton } from "./FormParts";
+import { Field, FormError, GoogleSignIn, QueryError, QueryNotice, SubmitButton } from "./FormParts";
 import { linkClass } from "./styles";
 
 const initial: AuthFormState = { error: null };
@@ -15,6 +15,9 @@ export function LoginForm() {
 
   return (
     <>
+      <div className="mb-4 empty:hidden">
+        <QueryNotice />
+      </div>
       <GoogleSignIn />
       <form action={action} className="space-y-3">
         <input type="hidden" name="next" value={next} />

@@ -4,24 +4,30 @@ import { useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import { signInWithGoogle } from "@/server/auth-actions";
-import { inputClass, primaryButtonClass, secondaryButtonClass } from "./styles";
+import { dangerButtonClass, inputClass, primaryButtonClass, secondaryButtonClass } from "./styles";
+
+const VARIANTS = { primary: primaryButtonClass, secondary: secondaryButtonClass, danger: dangerButtonClass };
 
 /** Submit button that disables itself while its form's action runs. */
 export function SubmitButton({
   children,
   pendingLabel,
   variant = "primary",
+  fullWidth = true,
+  disabled = false,
 }: {
   children: ReactNode;
   pendingLabel: string;
-  variant?: "primary" | "secondary";
+  variant?: keyof typeof VARIANTS;
+  fullWidth?: boolean;
+  disabled?: boolean;
 }) {
   const { pending } = useFormStatus();
   return (
     <button
       type="submit"
-      disabled={pending}
-      className={variant === "primary" ? primaryButtonClass : secondaryButtonClass}
+      disabled={pending || disabled}
+      className={`${VARIANTS[variant]}${fullWidth ? " w-full" : ""}`}
     >
       {pending ? pendingLabel : children}
     </button>
@@ -51,16 +57,37 @@ export function FormError({ message }: { message: string | null | undefined }) {
   );
 }
 
+export function FormSuccess({ message }: { message: string | null | undefined }) {
+  if (!message) return null;
+  return (
+    <p role="status" className="text-sm text-emerald-700">
+      {message}
+    </p>
+  );
+}
+
 const QUERY_ERRORS: Record<string, string> = {
   link_invalid: "That link is invalid, expired or already used. Request a new one.",
   oauth: "Google sign-in didn't complete. Try again.",
   oauth_cancelled: "Google sign-in was cancelled.",
+  google_in_use: "That Google account is already connected to a different account.",
+  linking_disabled: "Connecting Google isn't enabled yet (Supabase: allow manual linking).",
+};
+
+const QUERY_NOTICES: Record<string, string> = {
+  deleted: "Your account and all of its resumes were deleted.",
 };
 
 /** Message for an ?error= code set by /auth/confirm or /auth/callback. Needs <Suspense>. */
 export function QueryError() {
   const code = useSearchParams().get("error");
   return <FormError message={code ? (QUERY_ERRORS[code] ?? QUERY_ERRORS.oauth) : null} />;
+}
+
+/** Message for a ?notice= code (e.g. after deleting an account). Needs <Suspense>. */
+export function QueryNotice() {
+  const code = useSearchParams().get("notice");
+  return <FormSuccess message={code ? QUERY_NOTICES[code] : null} />;
 }
 
 /** "Continue with Google" plus an "or" divider. Needs <Suspense> (reads ?next=). */

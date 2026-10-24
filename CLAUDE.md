@@ -14,7 +14,7 @@ The work happens in stages. Keep the data model structured so that later stages 
   - **1c: pagination.** Measure blocks off-screen and place them onto fixed-size pages with keep-together rules. Page numbers and page count appear in the preview UI.
   - **1d: export.** A print view with `@page { size; margin: 0 }` and one fixed-size div per page. Text stays selectable.
 - **Later stages** are specified in `docs/stage-prompts.md`, one prompt per stage:
-  - 1.5 auth (Supabase) and account settings
+  - 1.5 (done) auth (Supabase: email + Google) and account settings
   - 2 master library: items, bullet pool, variants, tags. This is why every entity has a stable `id`.
   - 3 AI resume parsing and usage logging
   - 3.5 usage dashboard and limits
@@ -51,16 +51,21 @@ npx tsc --noEmit      # typecheck
 ## Layout
 
 ```
-src/app/                    routes: / (list), /resumes/[id] (editor), /resumes/[id]/print
+src/app/                    routes: / (list), /resumes/[id] (editor), /resumes/[id]/print, /account
 src/app/(auth)/             /login, /signup, /forgot-password, /reset-password (shared narrow layout)
 src/app/auth/confirm        GET handler for every email link (verifyOtp with token_hash)
 src/app/auth/callback       GET handler for Google OAuth (exchangeCodeForSession)
 src/proxy.ts                session refresh + optimistic redirect to /login (Next 16's middleware)
-src/server/auth.ts          getSessionUser() / requireUser(): the real access gate
+src/server/auth.ts          getSessionUser() / requireUser() (+ getAuthUser / requireAuthUser for the full User)
+src/server/account.ts       getAccount(), ensureProfile() for /account (reads, not "use server")
+src/server/account-actions.ts "use server" name, password, email, Google link/unlink, delete account
+src/server/auth-errors.ts   Supabase auth error → log line + user message
 src/server/resumes.ts       read queries (NOT "use server", so they aren't exposed as actions)
 src/server/actions.ts       "use server" mutations (all input validated with zod)
 src/server/auth-actions.ts  "use server" sign in/up/out, Google, resend, forgot/reset password
 src/lib/supabase/           server (cookies), admin (service role, server-only) clients
+src/components/auth/        auth forms, FormParts (Field, SubmitButton, messages), shared classes
+src/components/account/     account page sections
 src/lib/auth/redirect.ts    safeNextPath() for post-login redirects, public route list
 src/db/                     drizzle schema + client
 src/lib/resume/             content zod schema (source of truth), factories, helpers
@@ -78,12 +83,14 @@ The app depends on these settings; they aren't in code. Redo them for each envir
 
 - **URL Configuration:** Site URL `http://localhost:3000`. Redirect URLs: `http://localhost:3000/**` (needed for Google's `redirectTo`).
 - **Providers → Email:** Confirm email **on**. Secure email change **on**. Minimum password length 8.
-- **Providers → Google:** enabled with an OAuth client from Google Cloud Console whose authorized redirect URI is `https://<project-ref>.supabase.co/auth/v1/callback`. Turn on manual identity linking (Stage 1.5c's connect/disconnect).
+- **Providers → Google:** enabled with an OAuth client from Google Cloud Console whose authorized redirect URI is `https://<project-ref>.supabase.co/auth/v1/callback`.
+- **Sign In / Providers → Allow manual linking:** on. "Connect Google" on /account needs it (`manual_linking_disabled` otherwise).
 - **Emails → SMTP:** Resend (`smtp.resend.com`, port 465, user `resend`, password = Resend API key, sender on a domain verified in Resend). Supabase's built-in sender only reaches project team members and is heavily rate-limited.
 - **Emails → Templates:** links must go to `/auth/confirm` with a token hash, not `{{ .ConfirmationURL }}`, so they work in any browser or device:
   - Confirm signup: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/`
   - Reset password: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password`
   - Change email address: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email_change&next=/account`
+- **Emails → Templates → Reauthentication:** keep `{{ .Token }}` in it (the 6-digit code for "Set a password").
 - **Rate Limits:** Supabase's built-in per-IP limits cover sign-in, sign-up, password recovery and email sends. That's our only rate limiting. Keep the defaults unless they get in the way of testing.
 
 ## Conventions
@@ -107,6 +114,16 @@ The app depends on these settings; they aren't in code. Redo them for each envir
 - **Auth errors** go through `src/server/auth-errors.ts`: `authErrorMessage(action, error)` logs `[auth] <action> failed: <code> (status N): <message>` on the server and returns a specific user message (in development with a `[dev: …]` suffix showing the raw Supabase code). Resend and forgot password use `silentAuthError()`, which surfaces the error only in development. Never log form data. Unexpected throws land in `src/app/error.tsx`.
 - **Tests** can import `server-only` modules (`vitest.config.mts` aliases it to an empty module).
 - **Redirect targets** from `?next=` or form fields always go through `safeNextPath()` (`src/lib/auth/redirect.ts`).
+- **Account vs resume data:** account data is the sign-in email (Supabase Auth) and `profiles.display_name`. The name, email, phone and links printed on a resume live in that resume's `content.header`. Never sync one into the other.
+- **Profiles** are created lazily by `ensureProfile()` (insert … on conflict do nothing), with the display name prefilled from Google's `full_name`. There's no DB trigger on `auth.users`.
+- **Reading `auth.users`:** `getAccount()` reads `encrypted_password` (only whether it's empty) because Supabase's API doesn't say whether a user has a password. Reading the `auth` schema is fine; never write to it. Use the Supabase Auth API for changes.
+- **Account actions:**
+  - Change password re-verifies the current one with `signInWithPassword`.
+  - Google-only accounts set a password with `reauthenticate()` (emailed 6-digit code, the Reauthentication template) plus `updateUser({ password, nonce })`.
+  - Both sign out other sessions (`signOut({ scope: "others" })`).
+  - Email change relies on "Secure email change" (both addresses confirm).
+  - Google can be disconnected only when the account has a password and another identity.
+  - Delete uses the admin API; FK cascades remove the user's rows.
 - **Service-role key** (`SUPABASE_SERVICE_ROLE_KEY`) is used only via `src/lib/supabase/admin.ts` (`server-only`) and the seed script. Never `NEXT_PUBLIC_`.
 - **Schema changes** go through `src/db/schema.ts`, then `npm run db:generate` and `npm run db:migrate`. Never edit tables in the Supabase dashboard. Drizzle only manages the `public` schema; Supabase owns `auth`, `storage` and the rest.
 - **Ids:** resume ids are UUIDs. Validate them with `ResumeIdSchema` before querying, because Postgres throws on a malformed UUID.

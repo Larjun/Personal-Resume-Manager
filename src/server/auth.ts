@@ -1,4 +1,5 @@
 import "server-only";
+import type { User } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { cache } from "react";
@@ -7,13 +8,14 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 export type SessionUser = { id: string; email: string };
 
 /**
- * The signed-in, email-verified user for this request, or null.
+ * The full Supabase user for this request (identities, metadata, pending email),
+ * or null if not signed in or the email isn't verified.
  *
  * Uses getUser() (a round trip to Supabase Auth) rather than getClaims(), so a
  * deleted or banned account is rejected immediately instead of when its JWT
  * expires. Deduplicated per request with React cache().
  */
-export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
+export const getAuthUser = cache(async (): Promise<User | null> => {
   // Auth depends on the real request, and supabase-js reads the clock (Date.now)
   // to check token expiry, which cacheComponents forbids during (runtime) prerendering.
   await connection();
@@ -21,7 +23,13 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   const { data, error } = await supabase.auth.getUser();
   const user = data.user;
   if (error || !user?.email || !user.email_confirmed_at) return null;
-  return { id: user.id, email: user.email };
+  return user;
+});
+
+/** The signed-in, email-verified user's id and email, or null. */
+export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
+  const user = await getAuthUser();
+  return user ? { id: user.id, email: user.email! } : null;
 });
 
 /**
@@ -30,6 +38,13 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
  */
 export async function requireUser(): Promise<SessionUser> {
   const user = await getSessionUser();
+  if (!user) redirect("/login");
+  return user;
+}
+
+/** Like requireUser(), but returns the full Supabase user (for the account page). */
+export async function requireAuthUser(): Promise<User> {
+  const user = await getAuthUser();
   if (!user) redirect("/login");
   return user;
 }
