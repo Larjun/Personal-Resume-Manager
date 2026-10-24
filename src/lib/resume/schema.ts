@@ -42,9 +42,22 @@ export const HeaderSchema = z.object({
   links: z.array(LinkSchema),
 });
 
+/**
+ * Where a copied item came from in the master library. Resume content is a
+ * self-contained copy; these ids only drive "Library updated" / "Pull latest".
+ */
+const itemSource = {
+  sourceItemId: Id.nullable(),
+  /** The library item's updatedAt when it was copied (ISO string). */
+  sourceItemUpdatedAt: z.iso.datetime({ offset: true }).nullable(),
+};
+
 export const BulletSchema = z.object({
   id: Id,
+  /** The resume's own copy of the text. */
   text: z.string(),
+  sourceBulletId: Id.nullable(),
+  sourceVariantId: Id.nullable(),
 });
 
 export const EntrySchema = z.object({
@@ -56,6 +69,7 @@ export const EntrySchema = z.object({
   bullets: z.array(BulletSchema),
   /** Unchecked entries stay in the editor but are left out of the resume. */
   visible: z.boolean().default(true),
+  ...itemSource,
 });
 
 export const PaperSchema = z.object({
@@ -69,6 +83,7 @@ export const PaperSchema = z.object({
   url: z.string().optional(),
   bullets: z.array(BulletSchema),
   visible: z.boolean().default(true),
+  ...itemSource,
 });
 
 export const DegreeSchema = z.object({
@@ -82,12 +97,14 @@ export const SchoolSchema = z.object({
   school: z.string(),
   location: z.string(),
   degrees: z.array(DegreeSchema),
+  ...itemSource,
 });
 
 export const SkillRowSchema = z.object({
   id: Id,
   category: z.string(),
   items: z.array(z.string()),
+  ...itemSource,
 });
 
 const sectionBase = { id: Id, heading: z.string() };
@@ -96,6 +113,7 @@ export const SummarySectionSchema = z.object({
   ...sectionBase,
   type: z.literal("summary"),
   text: z.string(),
+  ...itemSource,
 });
 
 export const EntriesSectionSchema = z.object({
@@ -130,7 +148,7 @@ export const SectionSchema = z.discriminatedUnion("type", [
   SkillsSectionSchema,
 ]);
 
-export const CONTENT_VERSION = 3;
+export const CONTENT_VERSION = 4;
 
 const CurrentContentSchema = z.object({
   version: z.literal(CONTENT_VERSION),

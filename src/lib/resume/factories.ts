@@ -16,7 +16,12 @@ export const newId = () => crypto.randomUUID();
 
 export const newLink = (text = "", url = ""): Link => ({ id: newId(), text, url });
 
-export const newBullet = (text = ""): Bullet => ({ id: newId(), text });
+/** Source fields for an item that wasn't copied from the library. */
+export const NO_ITEM_SOURCE = { sourceItemId: null, sourceItemUpdatedAt: null } as const;
+
+export const NO_BULLET_SOURCE = { sourceBulletId: null, sourceVariantId: null } as const;
+
+export const newBullet = (text = ""): Bullet => ({ id: newId(), text, ...NO_BULLET_SOURCE });
 
 export const newEntry = (): Entry => ({
   id: newId(),
@@ -26,6 +31,7 @@ export const newEntry = (): Entry => ({
   dates: { start: null, end: null },
   bullets: [newBullet()],
   visible: true,
+  ...NO_ITEM_SOURCE,
 });
 
 export const newPaper = (): Paper => ({
@@ -36,6 +42,7 @@ export const newPaper = (): Paper => ({
   date: null,
   bullets: [],
   visible: true,
+  ...NO_ITEM_SOURCE,
 });
 
 export const newDegree = (): Degree => ({
@@ -49,12 +56,14 @@ export const newSchool = (): School => ({
   school: "",
   location: "",
   degrees: [newDegree()],
+  ...NO_ITEM_SOURCE,
 });
 
 export const newSkillRow = (category = "", items: string[] = []): SkillRow => ({
   id: newId(),
   category,
   items,
+  ...NO_ITEM_SOURCE,
 });
 
 export const DEFAULT_HEADINGS: Record<SectionType, string> = {
@@ -69,7 +78,7 @@ export function newSection(type: SectionType, heading = DEFAULT_HEADINGS[type]):
   const base = { id: newId(), heading };
   switch (type) {
     case "summary":
-      return { ...base, type, text: "" };
+      return { ...base, type, text: "", ...NO_ITEM_SOURCE };
     case "entries":
       return { ...base, type, entries: [newEntry()] };
     case "publications":
@@ -95,7 +104,10 @@ export function emptyResume(): ResumeContent {
   };
 }
 
-/** Deep copy with fresh ids for every entity (used by duplicate). */
+/**
+ * Deep copy with fresh ids for every entity (used by duplicate). Only `id`
+ * keys change: source fields still point at the same library items.
+ */
 export function cloneWithNewIds(content: ResumeContent): ResumeContent {
   const copy = structuredClone(content);
   const reId = (value: unknown): void => {

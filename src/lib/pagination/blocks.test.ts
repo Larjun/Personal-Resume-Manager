@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { newBullet, newEntry, newPaper, newSection } from "@/lib/resume/factories";
-import type { ResumeContent, Section } from "@/lib/resume/schema";
+import { CONTENT_VERSION, type ResumeContent, type Section } from "@/lib/resume/schema";
 import { toBlocks } from "./blocks";
 
 const entriesSection = (visibility: boolean[]): Section => {
@@ -16,7 +16,7 @@ const entriesSection = (visibility: boolean[]): Section => {
 };
 
 const content = (...sections: Section[]): ResumeContent => ({
-  version: 3,
+  version: CONTENT_VERSION,
   settings: { dateFormat: "long" },
   header: { name: "N", email: "", location: "", phone: "", links: [] },
   sections,

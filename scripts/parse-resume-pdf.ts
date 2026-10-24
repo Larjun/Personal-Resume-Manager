@@ -10,7 +10,7 @@
  *   - "Category: a, b, c" in a skills section     → skill row
  */
 import { createRequire } from "node:module";
-import { newId as defaultNewId } from "@/lib/resume/factories";
+import { NO_BULLET_SOURCE, NO_ITEM_SOURCE, newId as defaultNewId } from "@/lib/resume/factories";
 import { parseDateRange, parseYearMonth } from "@/lib/resume/dates";
 import { classifyContacts } from "@/lib/resume/migrate";
 import {
@@ -144,7 +144,7 @@ export function parseLines(lines: PdfLine[], newId: () => string = defaultNewId)
       const base = { id: newId(), heading };
       section =
         type === "summary"
-          ? { ...base, type, text: "" }
+          ? { ...base, type, text: "", ...NO_ITEM_SOURCE }
           : type === "education"
             ? { ...base, type, schools: [] }
             : type === "skills"
@@ -170,7 +170,7 @@ export function parseLines(lines: PdfLine[], newId: () => string = defaultNewId)
           .split(",")
           .map((s) => s.trim())
           .filter(Boolean);
-        section.rows.push({ id: newId(), category, items });
+        section.rows.push({ id: newId(), category, items, ...NO_ITEM_SOURCE });
         break;
       }
 
@@ -185,7 +185,7 @@ export function parseLines(lines: PdfLine[], newId: () => string = defaultNewId)
           });
         } else {
           const [school, location] = splitBar(line.left, "first");
-          section.schools.push({ id: newId(), school, location, degrees: [] });
+          section.schools.push({ id: newId(), school, location, degrees: [], ...NO_ITEM_SOURCE });
         }
         break;
       }
@@ -196,7 +196,7 @@ export function parseLines(lines: PdfLine[], newId: () => string = defaultNewId)
         const paper = section.papers.at(-1);
         if (line.left.startsWith("●")) {
           if (!paper) break;
-          const bullet = { id: newId(), text: line.left.replace(/^●\s*/, "") };
+          const bullet = { id: newId(), text: line.left.replace(/^●\s*/, ""), ...NO_BULLET_SOURCE };
           paper.bullets.push(bullet);
           appendTarget = bullet;
         } else if (line.x > 40 && appendTarget) {
@@ -213,6 +213,7 @@ export function parseLines(lines: PdfLine[], newId: () => string = defaultNewId)
             date: parseYearMonth(line.right),
             bullets: [],
             visible: true,
+            ...NO_ITEM_SOURCE,
           });
           appendTarget = null;
         }
@@ -223,7 +224,7 @@ export function parseLines(lines: PdfLine[], newId: () => string = defaultNewId)
         const entry = section.entries.at(-1);
         if (line.left.startsWith("●")) {
           if (!entry) break;
-          const bullet = { id: newId(), text: line.left.replace(/^●\s*/, "") };
+          const bullet = { id: newId(), text: line.left.replace(/^●\s*/, ""), ...NO_BULLET_SOURCE };
           entry.bullets.push(bullet);
           appendTarget = bullet;
         } else if (line.x > 40 && appendTarget) {
@@ -242,6 +243,7 @@ export function parseLines(lines: PdfLine[], newId: () => string = defaultNewId)
             dates: splitDates(dates),
             bullets: [],
             visible: true,
+            ...NO_ITEM_SOURCE,
           });
           appendTarget = null;
         }

@@ -59,6 +59,8 @@ exports[`parseResumePdf(seed/resume.pdf) > matches the snapshot 1`] = `
           "id": "id-7",
           "location": "Boulder, CO",
           "school": "University of Colorado Boulder",
+          "sourceItemId": null,
+          "sourceItemUpdatedAt": null,
         },
       ],
       "type": "education",
@@ -66,6 +68,8 @@ exports[`parseResumePdf(seed/resume.pdf) > matches the snapshot 1`] = `
     {
       "heading": "Summary",
       "id": "id-10",
+      "sourceItemId": null,
+      "sourceItemUpdatedAt": null,
       "text": "Software Engineer with 2+ years of experience building full-stack and distributed systems, including fraud prevention platforms at Amazon that delivered $4M+ in operational impact using Java, TypeScript, and AWS. Currently building data pipelines and production web apps for an online racing league with Next.js and PostgreSQL, from feature development to user support.",
       "type": "summary",
     },
@@ -75,22 +79,32 @@ exports[`parseResumePdf(seed/resume.pdf) > matches the snapshot 1`] = `
           "bullets": [
             {
               "id": "id-13",
+              "sourceBulletId": null,
+              "sourceVariantId": null,
               "text": "Built a results pipeline (Next.js, TypeScript, Supabase/PostgreSQL) that parses race data from game servers, calculates championship points, and powers public leaderboards for 300+ active racers.",
             },
             {
               "id": "id-14",
+              "sourceBulletId": null,
+              "sourceVariantId": null,
               "text": "Combined leaderboards for two games into a single shared database schema, migrating data in stages with zero downtime.",
             },
             {
               "id": "id-15",
+              "sourceBulletId": null,
+              "sourceVariantId": null,
               "text": "Implemented fault-tolerant data collection across 7 game servers to prevent cascading failures, and resolved a scheduling bug that was silently dropping race results.",
             },
             {
               "id": "id-16",
+              "sourceBulletId": null,
+              "sourceVariantId": null,
               "text": "Improved site performance with server-side caching and pagination, and fixed database deadlocks under load.",
             },
             {
               "id": "id-17",
+              "sourceBulletId": null,
+              "sourceVariantId": null,
               "text": "Resolved user support tickets for drivers and league admins, debugging production issues and shipping fixes such as sign-in errors.",
             },
           ],
@@ -104,6 +118,8 @@ exports[`parseResumePdf(seed/resume.pdf) > matches the snapshot 1`] = `
           "id": "id-12",
           "location": "Remote",
           "org": "Sim Racing Alliance",
+          "sourceItemId": null,
+          "sourceItemUpdatedAt": null,
           "title": "Software Developer (Volunteer)",
           "visible": true,
         },
@@ -111,22 +127,32 @@ exports[`parseResumePdf(seed/resume.pdf) > matches the snapshot 1`] = `
           "bullets": [
             {
               "id": "id-19",
+              "sourceBulletId": null,
+              "sourceVariantId": null,
               "text": "Built full-stack seller abuse prevention systems (React, TypeScript, Java, AWS Fargate) that automated quarantine and destruction of fraudulent inventory at scale.",
             },
             {
               "id": "id-20",
+              "sourceBulletId": null,
+              "sourceVariantId": null,
               "text": "Designed RESTful APIs and investigator-facing UIs that streamlined fraud review workflows, plus Seller Central widgets enabling secure account reinstatement via identity verification.",
             },
             {
               "id": "id-21",
+              "sourceBulletId": null,
+              "sourceVariantId": null,
               "text": "Built data pipelines and ETL workflows (SQL, AWS RDS, Redshift) to detect abusive seller behavior and trigger enforcement actions at scale.",
             },
             {
               "id": "id-22",
+              "sourceBulletId": null,
+              "sourceVariantId": null,
               "text": "Migrated legacy seller verification and fraud prevention systems to AWS serverless architecture, reducing operational costs by $180K annually.",
             },
             {
               "id": "id-23",
+              "sourceBulletId": null,
+              "sourceVariantId": null,
               "text": "Implemented event-driven abuse prevention services using SNS, SQS, and Lambda, contributing to over $4M in prevented fraud and operational savings.",
             },
           ],
@@ -143,6 +169,8 @@ exports[`parseResumePdf(seed/resume.pdf) > matches the snapshot 1`] = `
           "id": "id-18",
           "location": "Tempe, Arizona",
           "org": "Amazon Stores",
+          "sourceItemId": null,
+          "sourceItemUpdatedAt": null,
           "title": "Software Development Engineer 1",
           "visible": true,
         },
@@ -150,14 +178,20 @@ exports[`parseResumePdf(seed/resume.pdf) > matches the snapshot 1`] = `
           "bullets": [
             {
               "id": "id-25",
+              "sourceBulletId": null,
+              "sourceVariantId": null,
               "text": "Built a food ordering and delivery app for a Chennai bakery startup, covering 150 sq. miles of delivery.",
             },
             {
               "id": "id-26",
+              "sourceBulletId": null,
+              "sourceVariantId": null,
               "text": "Developed REST APIs (Node.js, Express) and a mobile-first React PWA with OAuth2 authentication.",
             },
             {
               "id": "id-27",
+              "sourceBulletId": null,
+              "sourceVariantId": null,
               "text": "Increased the bakery’s sales by 300%.",
             },
           ],
@@ -174,6 +208,8 @@ exports[`parseResumePdf(seed/resume.pdf) > matches the snapshot 1`] = `
           "id": "id-24",
           "location": "Remote",
           "org": "Sri Vari Hot Chips",
+          "sourceItemId": null,
+          "sourceItemUpdatedAt": null,
           "title": "App Developer (Volunteer)",
           "visible": true,
         },
@@ -181,10 +217,14 @@ exports[`parseResumePdf(seed/resume.pdf) > matches the snapshot 1`] = `
           "bullets": [
             {
               "id": "id-29",
+              "sourceBulletId": null,
+              "sourceVariantId": null,
               "text": "Led a 5-person team developing omnidirectional movement and PID control code for competition robots.",
             },
             {
               "id": "id-30",
+              "sourceBulletId": null,
+              "sourceVariantId": null,
               "text": "Finished runner-up in the standard format of RMNA 2022.",
             },
           ],
@@ -201,6 +241,8 @@ exports[`parseResumePdf(seed/resume.pdf) > matches the snapshot 1`] = `
           "id": "id-28",
           "location": "Boulder, Colorado",
           "org": "CU Robotics",
+          "sourceItemId": null,
+          "sourceItemUpdatedAt": null,
           "title": "Lead Controls Engineer",
           "visible": true,
         },
@@ -215,10 +257,14 @@ exports[`parseResumePdf(seed/resume.pdf) > matches the snapshot 1`] = `
           "bullets": [
             {
               "id": "id-33",
+              "sourceBulletId": null,
+              "sourceVariantId": null,
               "text": "Developed a Swift app that offers real-time weather data and precise wildfire risk forecasts in the continental United States using Machine Learning.",
             },
             {
               "id": "id-34",
+              "sourceBulletId": null,
+              "sourceVariantId": null,
               "text": "Trained and adapted classification and regression models in TensorFlow, deploying to on-device using Core ML. Achieved 90% accuracy in multi-variable classification.",
             },
           ],
@@ -229,6 +275,8 @@ exports[`parseResumePdf(seed/resume.pdf) > matches the snapshot 1`] = `
           "id": "id-32",
           "location": "",
           "org": "",
+          "sourceItemId": null,
+          "sourceItemUpdatedAt": null,
           "title": "Aether Predict - Wildfire Swift App",
           "visible": true,
         },
@@ -236,18 +284,26 @@ exports[`parseResumePdf(seed/resume.pdf) > matches the snapshot 1`] = `
           "bullets": [
             {
               "id": "id-36",
+              "sourceBulletId": null,
+              "sourceVariantId": null,
               "text": "Created a white-label web application for Expedia Group to improve communication between Vrbo property managers and customers.",
             },
             {
               "id": "id-37",
+              "sourceBulletId": null,
+              "sourceVariantId": null,
               "text": "Led frontend development using React, TypeScript, and Material UI, delivering responsive, customizable templates with PWA support following agile workflow.",
             },
             {
               "id": "id-38",
+              "sourceBulletId": null,
+              "sourceVariantId": null,
               "text": "Integrated backend using AWS API gateway with JSON Web Tokens for authentication and secure communication between frontend and backend.",
             },
             {
               "id": "id-39",
+              "sourceBulletId": null,
+              "sourceVariantId": null,
               "text": "Deployed the application on AWS using Docker, enabling automated CI/CD pipelines for continuous integration and deployment.",
             },
           ],
@@ -258,6 +314,8 @@ exports[`parseResumePdf(seed/resume.pdf) > matches the snapshot 1`] = `
           "id": "id-35",
           "location": "",
           "org": "",
+          "sourceItemId": null,
+          "sourceItemUpdatedAt": null,
           "title": "Expedia Senior Capstone Project",
           "visible": true,
         },
@@ -281,6 +339,8 @@ exports[`parseResumePdf(seed/resume.pdf) > matches the snapshot 1`] = `
             "Swift",
             "SQL",
           ],
+          "sourceItemId": null,
+          "sourceItemUpdatedAt": null,
         },
         {
           "category": "Frontend",
@@ -292,6 +352,8 @@ exports[`parseResumePdf(seed/resume.pdf) > matches the snapshot 1`] = `
             "Material UI",
             "PWA",
           ],
+          "sourceItemId": null,
+          "sourceItemUpdatedAt": null,
         },
         {
           "category": "Backend & Systems",
@@ -303,6 +365,8 @@ exports[`parseResumePdf(seed/resume.pdf) > matches the snapshot 1`] = `
             "Node.js",
             "Express",
           ],
+          "sourceItemId": null,
+          "sourceItemUpdatedAt": null,
         },
         {
           "category": "Cloud & DevOps",
@@ -318,6 +382,8 @@ exports[`parseResumePdf(seed/resume.pdf) > matches the snapshot 1`] = `
             "Docker",
             "CI/CD",
           ],
+          "sourceItemId": null,
+          "sourceItemUpdatedAt": null,
         },
         {
           "category": "Databases & Data",
@@ -329,6 +395,8 @@ exports[`parseResumePdf(seed/resume.pdf) > matches the snapshot 1`] = `
             "Redis",
             "ETL Pipelines",
           ],
+          "sourceItemId": null,
+          "sourceItemUpdatedAt": null,
         },
         {
           "category": "Machine Learning",
@@ -338,6 +406,8 @@ exports[`parseResumePdf(seed/resume.pdf) > matches the snapshot 1`] = `
             "Core ML",
             "Prompt Engineering",
           ],
+          "sourceItemId": null,
+          "sourceItemUpdatedAt": null,
         },
       ],
       "type": "skills",
@@ -346,6 +416,6 @@ exports[`parseResumePdf(seed/resume.pdf) > matches the snapshot 1`] = `
   "settings": {
     "dateFormat": "long",
   },
-  "version": 3,
+  "version": 4,
 }
 `;

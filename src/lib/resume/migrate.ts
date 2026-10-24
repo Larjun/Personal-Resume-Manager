@@ -74,6 +74,31 @@ export function migrateContent(input: unknown): unknown {
     }
     data = { ...data, version: 3, settings: { dateFormat: inferDateFormat(texts) }, sections };
   }
+
+  // v3 → v4: library source tracking. Existing items weren't copied from the
+  // library, so every source field starts as null.
+  if (data.version === 3) {
+    type Item = Record<string, unknown> & { bullets?: Record<string, unknown>[] };
+    type Sec = Record<string, unknown> & { entries?: Item[]; papers?: Item[]; schools?: Item[]; rows?: Item[] };
+    const noItemSource = { sourceItemId: null, sourceItemUpdatedAt: null };
+    const noBulletSource = { sourceBulletId: null, sourceVariantId: null };
+    const sections = structuredClone((data.sections ?? []) as Sec[]).map((s) => {
+      const withSource = (items?: Item[]) =>
+        items?.map((item) => ({
+          ...item,
+          ...noItemSource,
+          ...(item.bullets && { bullets: item.bullets.map((b) => ({ ...b, ...noBulletSource })) }),
+        }));
+      const out: Sec = { ...s };
+      if (s.type === "summary") Object.assign(out, noItemSource);
+      if (s.entries) out.entries = withSource(s.entries);
+      if (s.papers) out.papers = withSource(s.papers);
+      if (s.schools) out.schools = withSource(s.schools);
+      if (s.rows) out.rows = withSource(s.rows);
+      return out;
+    });
+    data = { ...data, version: 4, sections };
+  }
   return data;
 }
 

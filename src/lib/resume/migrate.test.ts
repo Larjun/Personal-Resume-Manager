@@ -40,7 +40,7 @@ describe("ResumeContentSchema migration", () => {
       sections: [],
     };
     expect(ResumeContentSchema.parse(v1)).toEqual({
-      version: 3,
+      version: 4,
       settings: { dateFormat: "long" },
       header: {
         name: "Ada",
@@ -77,7 +77,7 @@ describe("ResumeContentSchema migration", () => {
       ],
     };
     const out = ResumeContentSchema.parse(v2);
-    expect(out.version).toBe(3);
+    expect(out.version).toBe(4);
     expect(out.settings.dateFormat).toBe("short");
     const [exp, edu, pubs] = out.sections;
     expect(exp.type === "entries" && exp.entries.map((e) => e.dates)).toEqual([
@@ -88,13 +88,40 @@ describe("ResumeContentSchema migration", () => {
     expect(pubs.type === "publications" && pubs.papers[0].date).toBe(null);
   });
 
-  it("leaves current-version content untouched", () => {
+  it("upgrades v3 content with null library source fields", () => {
     const v3 = {
       version: 3,
+      settings: { dateFormat: "short" },
+      header: { name: "", email: "", location: "", phone: "", links: [] },
+      sections: [
+        { id: "s0", heading: "Summary", type: "summary", text: "Hi" },
+        { id: "s1", heading: "Experience", type: "entries", entries: [
+          { id: "e", title: "", org: "", location: "", visible: true, dates: { start: null, end: null }, bullets: [{ id: "b", text: "Did a thing" }] },
+        ] },
+        { id: "s2", heading: "Publications", type: "publications", papers: [
+          { id: "p", title: "", authors: "", venue: "", date: null, visible: true, bullets: [{ id: "pb", text: "Award" }] },
+        ] },
+        { id: "s3", heading: "Education", type: "education", schools: [{ id: "sc", school: "", location: "", degrees: [] }] },
+        { id: "s4", heading: "Skills", type: "skills", rows: [{ id: "r", category: "", items: [] }] },
+      ],
+    };
+    const noItem = { sourceItemId: null, sourceItemUpdatedAt: null };
+    const noBullet = { sourceBulletId: null, sourceVariantId: null };
+    const [summary, exp, pubs, edu, skills] = ResumeContentSchema.parse(v3).sections;
+    expect(summary).toMatchObject({ text: "Hi", ...noItem });
+    expect(exp.type === "entries" && exp.entries[0]).toMatchObject({ ...noItem, bullets: [{ id: "b", text: "Did a thing", ...noBullet }] });
+    expect(pubs.type === "publications" && pubs.papers[0]).toMatchObject({ ...noItem, bullets: [{ id: "pb", ...noBullet }] });
+    expect(edu.type === "education" && edu.schools[0]).toMatchObject(noItem);
+    expect(skills.type === "skills" && skills.rows[0]).toMatchObject(noItem);
+  });
+
+  it("leaves current-version content untouched", () => {
+    const v4 = {
+      version: 4,
       settings: { dateFormat: "numeric" },
       header: { name: "", email: "", location: "", phone: "", links: [] },
       sections: [],
     };
-    expect(ResumeContentSchema.parse(v3)).toEqual(v3);
+    expect(ResumeContentSchema.parse(v4)).toEqual(v4);
   });
 });
