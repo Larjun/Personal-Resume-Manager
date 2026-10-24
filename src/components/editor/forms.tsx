@@ -15,7 +15,7 @@ import {
   TextInput,
   TrashIcon,
 } from "./fields";
-import type { Copy } from "@/lib/library/sync";
+import { applyLatest, type Copy } from "@/lib/library/sync";
 import { SyncBadge, UpdateLibraryControl } from "./librarySync";
 import { DragHandle, moveItem, SortableList, type DragHandleProps } from "./SortableList";
 
@@ -170,7 +170,7 @@ function SectionBody({ section, update }: { section: Section; update: Update<Sec
     case "summary":
       return (
         <div className="space-y-1.5">
-          <SyncBadge copy={section} />
+          <SyncBadge copy={section} onPull={(source) => narrow<"summary">()((s) => applyLatest(s, source))} />
           <TextArea
             aria-label="Summary"
             rows={3}
@@ -231,7 +231,7 @@ function EntryCard({
       meta={formatRange(entry.dates, format)}
       hasIssues={dateRangeIssues(entry.dates, format).length > 0}
       startOpen={!entry.title && !entry.org}
-      badge={<SyncBadge copy={entry} />}
+      badge={<SyncBadge copy={entry} onPull={(source) => update((e) => applyLatest(e, source))} />}
       visible={entry.visible}
       onVisibleChange={(v) => update((e) => void (e.visible = v))}
       onDelete={onDelete}
@@ -312,7 +312,7 @@ function PaperCard({
       meta={formatYearMonth(paper.date, format)}
       hasIssues={singleDateIssues(paper.date, format).length > 0}
       startOpen={!paper.title}
-      badge={<SyncBadge copy={paper} />}
+      badge={<SyncBadge copy={paper} onPull={(source) => update((p) => applyLatest(p, source))} />}
       visible={paper.visible}
       onVisibleChange={(v) => update((p) => void (p.visible = v))}
       onDelete={onDelete}
@@ -425,7 +425,6 @@ function CollapsibleItem({
           </span>
           <span className={`truncate text-sm font-medium ${visible ? "" : "text-zinc-400 line-through"}`}>{summary}</span>
           <span className="ml-auto flex shrink-0 items-center gap-1.5 pl-2 text-xs text-zinc-500">
-            {badge}
             {meta}
             {hasIssues && (
               <span className="text-amber-600" title="Date needs attention" aria-label="Date needs attention">
@@ -434,6 +433,7 @@ function CollapsibleItem({
             )}
           </span>
         </button>
+        {badge}
         <IconButton
           label="Delete item"
           tone="danger"
@@ -552,7 +552,7 @@ function SchoolCard({
             <TextInput value={school.location} onChange={(v) => update((s) => void (s.location = v))} />
           </Field>
         </div>
-        <SyncBadge copy={school} />
+        <SyncBadge copy={school} onPull={(source) => update((s) => applyLatest(s, source))} />
         <IconButton label="Delete school" tone="danger" onClick={onDelete}>
           <TrashIcon />
         </IconButton>
@@ -623,7 +623,7 @@ function SkillsForm({ section, update }: { section: SectionOf<"skills">; update:
               value={row.items}
               onChange={(v) => update((s) => void (s.rows[i].items = v))}
             />
-            <SyncBadge copy={row} />
+            <SyncBadge copy={row} onPull={(source) => update((s) => applyLatest(s.rows[i], source))} />
             <IconButton label="Delete row" tone="danger" onClick={() => update((s) => void s.rows.splice(i, 1))}>
               <TrashIcon />
             </IconButton>

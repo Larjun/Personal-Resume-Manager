@@ -1,9 +1,11 @@
 "use client";
 
+import { diffWords } from "diff";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { LibraryItem } from "@/db/library-queries";
 import { sourceItemIds } from "@/lib/library/links";
-import { bulletSync, copyStatus, type Copy, type SyncSource } from "@/lib/library/sync";
+import { bulletSync, copyChanges, copyStatus, type Copy, type SyncSource } from "@/lib/library/sync";
 import type { Bullet, ResumeContent } from "@/lib/resume/schema";
 import { fetchLibrarySources, pushBulletToLibrary } from "@/server/library-actions";
 
@@ -25,7 +27,11 @@ export const useLibrarySync = () => useContext(LibrarySyncContext);
  * refetches when the resume links a new item and when the tab regains focus,
  * so edits made on the Library page (or in another tab) show up.
  */
-export function useLibrarySources(content: ResumeContent, initial: LibraryItem[], initialContent: ResumeContent): SyncContext {
+export function useLibrarySources(
+  content: ResumeContent,
+  initial: LibraryItem[],
+  initialContent: ResumeContent,
+): SyncContext {
   const [sources, setSources] = useState<Sources>(() => ({
     items: new Map(initial.map((i) => [i.id, i])),
     loaded: new Set(sourceItemIds(initialContent)),
@@ -82,17 +88,42 @@ export function useLibrarySources(content: ResumeContent, initial: LibraryItem[]
   };
 }
 
-/** "Library updated" / "Source deleted" pill for a copied item; nothing otherwise. */
-export function SyncBadge({ copy }: { copy: Copy }) {
+/**
+ * "Library updated" (with Pull latest) or "Source deleted" for a copied item;
+ * nothing otherwise. `onPull` applies the latest library version to the copy.
+ */
+export function SyncBadge({ copy, onPull }: { copy: Copy; onPull: (source: SyncSource) => void }) {
   const { sourceFor } = useLibrarySync();
-  const status = copyStatus(copy, sourceFor(copy));
-  if (status === "updated") {
+  const [reviewing, setReviewing] = useState(false);
+  const source = sourceFor(copy);
+  const status = copyStatus(copy, source);
+  if (status === "updated" && source) {
     return (
-      <span
-        className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-800 ring-1 ring-amber-200"
-        title="The library version of this item changed after you copied it."
-      >
-        Library updated
+      <span className="flex shrink-0 items-center gap-1">
+        <span
+          className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-800 ring-1 ring-amber-200"
+          title="The library version of this item changed after you copied it."
+        >
+          Library updated
+        </span>
+        <button
+          type="button"
+          onClick={() => setReviewing(true)}
+          className="rounded px-1.5 py-0.5 text-[10px] font-medium text-amber-800 underline-offset-2 hover:underline"
+        >
+          Pull latest
+        </button>
+        {reviewing && (
+          <PullLatestDialog
+            copy={copy}
+            source={source}
+            onApply={() => {
+              onPull(source);
+              setReviewing(false);
+            }}
+            onClose={() => setReviewing(false)}
+          />
+        )}
       </span>
     );
   }
@@ -107,6 +138,108 @@ export function SyncBadge({ copy }: { copy: Copy }) {
     );
   }
   return null;
+}
+
+/** Word-by-word diff of what Pull latest would change, with Apply / Cancel. */
+function PullLatestDialog({
+  copy,
+  source,
+  onApply,
+  onClose,
+}: {
+  copy: Copy;
+  source: SyncSource;
+  onApply: () => void;
+  onClose: () => void;
+}) {
+  const changes = copyChanges(copy, source);
+  const keptEdits = ("bullets" in copy ? copy.bullets : []).filter((b) => {
+    const s = bulletSync(b, source);
+    return s?.edited && s.libraryChanged;
+  }).length;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  // Portal to <body>: the badge sits inside sortable (transformed) list items.
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Pull latest from library"
+    >
+      <button aria-label="Close" onClick={onClose} className="absolute inset-0 cursor-default bg-zinc-900/30" />
+      <div className="relative flex max-h-[85vh] w-[min(640px,100%)] flex-col rounded-lg border border-zinc-200 bg-white shadow-xl">
+        <header className="border-b border-zinc-200 px-4 py-3">
+          <h2 className="text-sm font-semibold">Pull latest from library</h2>
+          <p className="text-xs text-zinc-500">
+            These changes from your library will replace what&apos;s in this resume.{" "}
+            <span className="text-red-700 line-through decoration-red-400">Removed</span>{" "}
+            <span className="rounded-sm bg-green-50 text-green-800">added</span>.
+          </p>
+        </header>
+        <ul className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
+          {changes.map((c) => (
+            <li key={c.key}>
+              <p className="mb-0.5 text-xs font-medium text-zinc-500">{c.label}</p>
+              <WordDiff before={c.before} after={c.after} />
+            </li>
+          ))}
+          {changes.length === 0 && (
+            <li className="text-sm text-zinc-500">Nothing to pull: this is already up to date.</li>
+          )}
+        </ul>
+        {keptEdits > 0 && (
+          <p className="border-t border-zinc-100 px-4 py-2 text-xs text-zinc-500">
+            {keptEdits === 1 ? "1 bullet you edited" : `${keptEdits} bullets you edited`} in this resume will be kept as
+            you wrote {keptEdits === 1 ? "it" : "them"}.
+          </p>
+        )}
+        <footer className="flex justify-end gap-2 border-t border-zinc-200 px-4 py-3">
+          <button
+            onClick={onClose}
+            className="rounded-md px-3 py-1.5 text-sm font-medium text-zinc-600 hover:bg-zinc-100"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onApply}
+            disabled={changes.length === 0}
+            className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-40"
+          >
+            Apply {changes.length} {changes.length === 1 ? "change" : "changes"}
+          </button>
+        </footer>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function WordDiff({ before, after }: { before: string; after: string }) {
+  if (!before && !after) return null;
+  return (
+    <p className="whitespace-pre-wrap rounded-md bg-zinc-50 px-2 py-1.5 text-sm leading-relaxed">
+      {diffWords(before, after).map((part, i) =>
+        part.removed ? (
+          <span key={i} className="text-red-700 line-through decoration-red-400">
+            {part.value}
+          </span>
+        ) : part.added ? (
+          <span key={i} className="rounded-sm bg-green-50 text-green-800">
+            {part.value}
+          </span>
+        ) : (
+          <span key={i}>{part.value}</span>
+        ),
+      )}
+      {!after && <span className="ml-1 text-xs text-zinc-400">(now empty)</span>}
+    </p>
+  );
 }
 
 const quote = (s: string) => (s.length > 80 ? `“${s.slice(0, 80)}…”` : `“${s}”`);
